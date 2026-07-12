@@ -123,17 +123,10 @@ def check_episode(
                 )
             fail_reasons.append(f"{arm}: {', '.join(reasons)}")
 
-    result_labels = config.result_labels or {}
-    result_label = (
-        result_labels.get("passed", "Home") if episode_passed
-        else result_labels.get("failed", "Not Home")
-    )
-
     return {
         "episode_path": str(episode.path),
         "label": label,
         "passed": episode_passed,
-        "result_label": result_label,
         "fail_reasons": fail_reasons,
         "arm_metrics": arm_results,
     }
@@ -168,7 +161,6 @@ def scan_episodes(
                         "episode_path": str(ep_dir),
                         "label": label,
                         "passed": False,
-                        "result_label": "Not Home",
                         "fail_reasons": [f"load_error: {e}"],
                         "arm_metrics": [],
                     }

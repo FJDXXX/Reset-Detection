@@ -97,12 +97,40 @@ def build_tolerances(
     return tol
 
 
+def check_tolerance_warnings(tolerances: dict[str, Any], arm: str) -> None:
+    joint_names = ["J1", "J2", "J3", "J4", "J5", "J6"]
+    jt = tolerances.get("joint_positions", [])
+    for i, t in enumerate(jt):
+        if t > 1.0:
+            print(
+                f"  WARNING: {arm} {joint_names[i]} tolerance={t:.3f} rad\n"
+                f"           Unusually large. Possible multimodal distribution.\n"
+                f"           Consider using calibration.exclude_episodes."
+            )
+    for key, label in [("ee_position", "EE position"),
+                       ("ee_orientation", "EE orientation")]:
+        tv = tolerances.get(key)
+        if isinstance(tv, list):
+            for i, t in enumerate(tv):
+                if t > 1.0:
+                    print(
+                        f"  WARNING: {arm} {label}[{i}] tolerance={t:.3f}\n"
+                        f"           Unusually large. Possible multimodal distribution."
+                    )
+        elif isinstance(tv, (int, float)) and tv > 1.0:
+            print(
+                f"  WARNING: {arm} {label} tolerance={tv:.3f}\n"
+                f"           Unusually large. Possible multimodal distribution."
+            )
+
+
 def calibrate(
     data_path: str | Path,
     arms: list[str] | None = None,
     config_path: str | Path = "configs/default.yaml",
     tolerance_factor: float = 3.0,
     write_config: bool = True,
+    exclude_episodes: list[str] | None = None,
 ) -> dict[str, Any]:
     data_path = Path(data_path)
     if not data_path.exists():
@@ -111,9 +139,20 @@ def calibrate(
     if arms is None:
         arms = ["right_arm"]
 
-    episode_dirs = find_episode_dirs(data_path)
-    if not episode_dirs:
+    exclude_set = set(exclude_episodes or [])
+
+    all_episode_dirs = find_episode_dirs(data_path)
+    if not all_episode_dirs:
         raise ValueError(f"No episode directories found under {data_path}")
+
+    excluded_dirs = [d for d in all_episode_dirs if d.name in exclude_set]
+    episode_dirs = [d for d in all_episode_dirs if d.name not in exclude_set]
+
+    if not episode_dirs:
+        raise ValueError(
+            f"All {len(all_episode_dirs)} episodes were excluded. "
+            "Nothing to calibrate."
+        )
 
     collected = collect_start_poses(episode_dirs, arms)
 
@@ -122,6 +161,10 @@ def calibrate(
         "tolerances": {},
         "statistics": {},
         "num_episodes": len(episode_dirs),
+        "num_excluded": len(excluded_dirs),
+        "num_total": len(all_episode_dirs),
+        "excluded": [d.name for d in excluded_dirs],
+        "used": [d.name for d in episode_dirs],
     }
 
     for arm in arms:
@@ -156,8 +199,10 @@ def write_calibration_to_config(
     config_path: str | Path, calibration_result: dict[str, Any]
 ) -> None:
     config_path = Path(config_path)
-    if config_path.exists():
-        with open(config_path, "r") as f:
+    cal_path = config_path.parent / "calibrated.yaml"
+
+    if cal_path.exists():
+        with open(cal_path, "r") as f:
             raw = yaml.safe_load(f) or {}
     else:
         raw = {}
@@ -165,14 +210,35 @@ def write_calibration_to_config(
     raw["home_position"] = calibration_result["home_position"]
     raw["tolerances"] = calibration_result["tolerances"]
 
-    with open(config_path, "w") as f:
+    with open(cal_path, "w") as f:
         yaml.dump(raw, f, sort_keys=False, allow_unicode=True)
 
-    print(f"Calibration results written to {config_path}")
+    print(f"Calibration results written to {cal_path}")
 
 
-def print_statistics(result: dict[str, Any]) -> None:
-    print(f"\nCalibration based on {result['num_episodes']} episodes\n")
+def print_summary(result: dict[str, Any]) -> None:
+    print(f"\nCalibration Path: {result.get('_data_path', '')}")
+    print()
+
+    excluded = result.get("excluded", [])
+    used = result.get("used", [])
+
+    if excluded:
+        print("Excluded Episodes:")
+        for name in excluded:
+            print(f"  {name}")
+        print()
+
+    print("Used Episodes:")
+    for name in used:
+        print(f"  {name}")
+    print()
+
+    print(f"Total Episodes:  {result['num_total']}")
+    print(f"Used Episodes:   {result['num_episodes']}")
+    print(f"Excluded Episodes: {result['num_excluded']}")
+    print()
+
     for arm, stats in result["statistics"].items():
         print(f"=== {arm} ===")
         for key, vals in stats.items():
@@ -185,6 +251,8 @@ def print_statistics(result: dict[str, Any]) -> None:
         print(f"  -> home: {result['home_position'][arm]}")
         print(f"  -> tolerance (3*std): {result['tolerances'][arm]}")
         print()
+
+        check_tolerance_warnings(result["tolerances"][arm], arm)
 
 
 def main() -> None:
@@ -226,9 +294,11 @@ def main() -> None:
         config_path=args.config,
         tolerance_factor=args.tolerance_factor,
         write_config=not args.dry_run,
+        exclude_episodes=cfg.calibration_exclude_episodes,
     )
 
-    print_statistics(result)
+    result["_data_path"] = str(data_path)
+    print_summary(result)
 
 
 if __name__ == "__main__":

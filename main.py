@@ -47,10 +47,11 @@ def main():
     results = scan_episodes(cfg.data_raw_path, cfg, labels=labels or None)
     df = results_to_dataframe(results)
 
-    output_columns = ["episode", "label", "passed", "result_label", "fail_reasons"]
-    df[output_columns].to_csv(args.output, index=False)
+    output_columns = cfg.output_labels or ["label", "episode", "passed", "fail_reasons"]
+    available = [c for c in output_columns if c in df.columns]
+    df[available].to_csv(args.output, index=False)
     print(f"Results saved to {args.output}")
-    print(df[output_columns].to_string(index=False))
+    print(df[available].to_string(index=False))
 
 
 if __name__ == "__main__":
