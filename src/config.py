@@ -25,10 +25,28 @@ class Thresholds:
 
 
 @dataclass
+class ToleranceFloor:
+    gripper: float = 0.0
+    ee_position: float = 0.0
+    ee_orientation: float = 0.0
+    joint_positions: float = 0.0
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> ToleranceFloor:
+        return cls(
+            gripper=d.get("gripper", 0.0),
+            ee_position=d.get("ee_position", 0.0),
+            ee_orientation=d.get("ee_orientation", 0.0),
+            joint_positions=d.get("joint_positions", 0.0),
+        )
+
+
+@dataclass
 class Config:
     data_raw_path: str = ""
     calibration_data_path: str = ""
     calibration_exclude_episodes: list[str] = field(default_factory=list)
+    calibration_tolerance_floor: ToleranceFloor = field(default_factory=ToleranceFloor)
     arms: list[str] = field(default_factory=lambda: ["right_arm", "left_arm"])
     thresholds: Thresholds = field(default_factory=Thresholds)
     home_position: dict | None = None
@@ -53,6 +71,9 @@ class Config:
             data_raw_path=d.get("data", {}).get("raw_path", ""),
             calibration_data_path=d.get("calibration", {}).get("data_path", ""),
             calibration_exclude_episodes=d.get("calibration", {}).get("exclude_episodes", []),
+            calibration_tolerance_floor=ToleranceFloor.from_dict(
+                d.get("calibration", {}).get("tolerance_floor", {})
+            ),
             arms=d.get("arms", ["right_arm", "left_arm"]),
             thresholds=Thresholds.from_dict(d.get("thresholds", {})),
             home_position=d.get("home_position"),
@@ -79,6 +100,10 @@ def load_config(path: str | Path = "configs/default.yaml") -> Config:
         for k in ("home_position", "tolerances"):
             if k in cal:
                 raw[k] = cal[k]
+        if "tolerance_floor" in cal:
+            raw.setdefault("calibration", {})
+            cal_tf = raw["calibration"].setdefault("tolerance_floor", {})
+            cal_tf.update(cal["tolerance_floor"])
 
     fixed_path = base_dir / "fixed.yaml"
     if fixed_path.exists():

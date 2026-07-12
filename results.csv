@@ -1,32 +1,32 @@
-episode,passed
-episode_0008,False
-episode_0009,False
-episode_0010,False
-episode_0021,False
-episode_0021 (1),False
-episode_0022 (1),False
-episode_0025,False
-episode_0035,True
-episode_0038,True
-episode_0042,True
-episode_0060,True
-episode_0001,False
-episode_0002,False
-episode_0002 (1),False
-episode_0002 (2),False
-episode_0003,False
-episode_0003 (1),False
-episode_0004,False
-episode_0004 (1),False
-episode_0005,False
-episode_0006,False
-episode_0008,False
-episode_0011,True
-episode_0022,False
-episode_0023,False
-episode_0024,False
-episode_0026,False
-episode_0041,False
-episode_0044,False
-episode_0044 (1),False
-episode_0061,False
+label,episode,passed
+二次夹取,episode_0008,True
+二次夹取,episode_0009,False
+二次夹取,episode_0010,True
+二次夹取,episode_0021,False
+二次夹取,episode_0021 (1),True
+二次夹取,episode_0022 (1),False
+二次夹取,episode_0025,False
+二次夹取,episode_0035,True
+二次夹取,episode_0038,True
+二次夹取,episode_0042,True
+二次夹取,episode_0060,True
+爪夹未闭合（复位不好）,episode_0001,False
+爪夹未闭合（复位不好）,episode_0002,False
+爪夹未闭合（复位不好）,episode_0002 (1),False
+爪夹未闭合（复位不好）,episode_0002 (2),False
+爪夹未闭合（复位不好）,episode_0003,False
+爪夹未闭合（复位不好）,episode_0003 (1),True
+爪夹未闭合（复位不好）,episode_0004,False
+爪夹未闭合（复位不好）,episode_0004 (1),False
+爪夹未闭合（复位不好）,episode_0005,False
+爪夹未闭合（复位不好）,episode_0006,False
+爪夹未闭合（复位不好）,episode_0008,True
+爪夹未闭合（复位不好）,episode_0011,True
+爪夹未闭合（复位不好）,episode_0022,False
+爪夹未闭合（复位不好）,episode_0023,False
+爪夹未闭合（复位不好）,episode_0024,False
+爪夹未闭合（复位不好）,episode_0026,False
+爪夹未闭合（复位不好）,episode_0041,False
+爪夹未闭合（复位不好）,episode_0044,False
+爪夹未闭合（复位不好）,episode_0044 (1),True
+爪夹未闭合（复位不好）,episode_0061,False

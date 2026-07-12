@@ -15,6 +15,7 @@ from .features import (
     extract_ee_orientation,
 )
 from .loader import load_episode
+from .metrics import ee_orientation_error
 
 
 def find_episode_dirs(root_dir: Path) -> list[Path]:
@@ -88,12 +89,20 @@ def build_home_position(stats: dict[str, dict[str, np.ndarray]]) -> dict[str, An
 
 
 def build_tolerances(
-    stats: dict[str, dict[str, np.ndarray]], factor: float = 3.0
+    stats: dict[str, dict[str, np.ndarray]],
+    factor: float = 3.0,
+    floor: dict[str, float] | None = None,
 ) -> dict[str, Any]:
+    floor = floor or {}
     tol = {}
-    for key in ["joint_positions", "ee_position", "ee_orientation"]:
-        tol[key] = (factor * stats[key]["std"]).tolist()
-    tol["gripper"] = float(factor * stats["gripper"]["std"])
+    for key in ["joint_positions", "ee_position"]:
+        raw = factor * stats[key]["std"]
+        f = floor.get(key, 0.0)
+        tol[key] = np.maximum(raw, f).tolist()
+    tol["ee_orientation"] = [0.0]  # placeholder, overwritten in calibrate()
+    tol["gripper"] = float(
+        max(factor * stats["gripper"]["std"], floor.get("gripper", 0.0))
+    )
     return tol
 
 
@@ -131,6 +140,7 @@ def calibrate(
     tolerance_factor: float = 3.0,
     write_config: bool = True,
     exclude_episodes: list[str] | None = None,
+    tolerance_floor: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     data_path = Path(data_path)
     if not data_path.exists():
@@ -160,12 +170,15 @@ def calibrate(
         "home_position": {},
         "tolerances": {},
         "statistics": {},
+        "tolerance_details": {},
         "num_episodes": len(episode_dirs),
         "num_excluded": len(excluded_dirs),
         "num_total": len(all_episode_dirs),
         "excluded": [d.name for d in excluded_dirs],
         "used": [d.name for d in episode_dirs],
     }
+
+    tf = tolerance_floor or {}
 
     for arm in arms:
         arm_data = collected[arm]
@@ -176,6 +189,8 @@ def calibrate(
                 raise ValueError(f"No data for {arm}.{key}")
             stats[key] = compute_statistics(values)
 
+        # Build statistics dict for display; ee_orientation will be overwritten
+        # with angular error stats after home_position is known.
         result["statistics"][arm] = {
             k: {
                 "mean": v["mean"].tolist() if isinstance(v["mean"], np.ndarray) else v["mean"],
@@ -187,7 +202,64 @@ def calibrate(
             for k, v in stats.items()
         }
         result["home_position"][arm] = build_home_position(stats)
-        result["tolerances"][arm] = build_tolerances(stats, factor=tolerance_factor)
+        result["tolerances"][arm] = build_tolerances(stats, factor=tolerance_factor, floor=tf)
+        result["tolerance_details"][arm] = {}
+
+        # Overwrite ee_orientation tolerance with angular-distance-based tolerance.
+        # This ensures tolerance and error are in the same unit (rad).
+        home_ori = np.array(result["home_position"][arm]["ee_orientation"], dtype=np.float64)
+        ori_samples = collected[arm]["ee_orientation"]
+        angular_errors = [ee_orientation_error(s, home_ori) for s in ori_samples]
+        n_ang = len(angular_errors)
+        ddof_ang = 1 if n_ang > 1 else 0
+        ang_mean = float(np.mean(angular_errors))
+        ang_std = float(np.std(angular_errors, ddof=ddof_ang))
+        ang_min = float(np.min(angular_errors))
+        ang_max = float(np.max(angular_errors))
+
+        raw_ori_tol = ang_std * tolerance_factor
+        ori_floor = tf.get("ee_orientation", 0.0)
+        final_ori_tol = max(raw_ori_tol, ori_floor)
+
+        result["tolerances"][arm]["ee_orientation"] = final_ori_tol
+        result["statistics"][arm]["ee_orientation"] = {
+            "mean": ang_mean,
+            "std": ang_std,
+            "min": ang_min,
+            "max": ang_max,
+            "count": n_ang,
+        }
+        result["statistics"][arm]["ee_orientation_tolerance"] = {
+            "value": final_ori_tol,
+            "factor": tolerance_factor,
+        }
+
+        # Record detailed tolerance breakdown for display
+        gripper_3s = float(tolerance_factor * stats["gripper"]["std"])
+        gripper_floor = tf.get("gripper", 0.0)
+        result["tolerance_details"][arm]["gripper"] = {
+            "raw_std": float(stats["gripper"]["std"]),
+            "3sigma": gripper_3s,
+            "floor": gripper_floor,
+            "final_tolerance": max(gripper_3s, gripper_floor),
+        }
+        result["tolerance_details"][arm]["ee_orientation"] = {
+            "raw_std": ang_std,
+            "3sigma": raw_ori_tol,
+            "floor": ori_floor,
+            "final_tolerance": final_ori_tol,
+        }
+        for key, label in [("joint_positions", "joint_positions"),
+                           ("ee_position", "ee_position")]:
+            raw_3s = (tolerance_factor * stats[key]["std"]).tolist()
+            f = tf.get(key, 0.0)
+            final_tol = np.maximum(tolerance_factor * stats[key]["std"], f).tolist()
+            result["tolerance_details"][arm][label] = {
+                "raw_std": stats[key]["std"].tolist(),
+                "3sigma": raw_3s,
+                "floor": f,
+                "final_tolerance": final_tol,
+            }
 
     if write_config:
         write_calibration_to_config(config_path, result)
@@ -242,12 +314,43 @@ def print_summary(result: dict[str, Any]) -> None:
     for arm, stats in result["statistics"].items():
         print(f"=== {arm} ===")
         for key, vals in stats.items():
+            if key == "ee_orientation_tolerance":
+                continue
             print(f"  {key}:")
-            print(f"    mean:   {vals['mean']}")
-            print(f"    std:    {vals['std']}")
-            print(f"    min:    {vals['min']}")
-            print(f"    max:    {vals['max']}")
+            if isinstance(vals.get("mean"), list):
+                print(f"    mean:   {vals['mean']}")
+                print(f"    std:    {vals['std']}")
+                print(f"    min:    {vals['min']}")
+                print(f"    max:    {vals['max']}")
+            else:
+                print(f"    mean:   {vals['mean']:.6f}")
+                print(f"    std:    {vals['std']:.6f}")
+                print(f"    min:    {vals['min']:.6f}")
+                print(f"    max:    {vals['max']:.6f}")
             print(f"    count:  {vals['count']}")
+        ot = stats.get("ee_orientation_tolerance", {})
+        if ot:
+            print(f"  -> orientation_tolerance: {ot['value']:.6f} (factor={ot['factor']})")
+        print()
+
+        # Show detailed tolerance breakdown
+        tdet = result.get("tolerance_details", {}).get(arm, {})
+        if tdet:
+            print("  Tolerance details:")
+            for key, info in tdet.items():
+                print(f"    {key}:")
+                if isinstance(info.get("raw_std"), list):
+                    print(f"      raw_std:          {info['raw_std']}")
+                    print(f"      3sigma:           {info['3sigma']}")
+                    print(f"      floor:            {info['floor']}")
+                    print(f"      final_tolerance:  {info['final_tolerance']}")
+                else:
+                    print(f"      raw_std:          {info['raw_std']:.6f}")
+                    print(f"      3sigma:           {info['3sigma']:.6f}")
+                    print(f"      floor:            {info['floor']}")
+                    print(f"      final_tolerance:  {info['final_tolerance']:.6f}")
+            print()
+
         print(f"  -> home: {result['home_position'][arm]}")
         print(f"  -> tolerance (3*std): {result['tolerances'][arm]}")
         print()
@@ -295,6 +398,12 @@ def main() -> None:
         tolerance_factor=args.tolerance_factor,
         write_config=not args.dry_run,
         exclude_episodes=cfg.calibration_exclude_episodes,
+        tolerance_floor={
+            "gripper": cfg.calibration_tolerance_floor.gripper,
+            "ee_position": cfg.calibration_tolerance_floor.ee_position,
+            "ee_orientation": cfg.calibration_tolerance_floor.ee_orientation,
+            "joint_positions": cfg.calibration_tolerance_floor.joint_positions,
+        },
     )
 
     result["_data_path"] = str(data_path)
