@@ -1,0 +1,32 @@
+episode,passed,fail_reasons
+episode_0008,True,
+episode_0009,False,right_arm: joint_error=0.2430 > 0.15
+episode_0010,True,
+episode_0021,True,
+episode_0021 (1),False,right_arm: joint_error=0.2941 > 0.15; left_arm: joint_error=0.1610 > 0.15
+episode_0022 (1),False,left_arm: joint_error=0.5322 > 0.15
+episode_0025,True,
+episode_0035,True,
+episode_0038,True,
+episode_0042,True,
+episode_0060,True,
+episode_0001,False,right_arm: joint_error=0.1656 > 0.15; left_arm: gripper_error=0.0100 > 0.01
+episode_0002,True,
+episode_0002 (1),False,right_arm: joint_error=0.5680 > 0.15
+episode_0002 (2),False,"right_arm: joint_error=0.3189 > 0.15, gripper_error=0.0306 > 0.01; left_arm: joint_error=0.8728 > 0.15, ee_orientation_error=0.2042 > 0.1"
+episode_0003,False,"right_arm: joint_error=1.2573 > 0.15, ee_position_error=0.1427 > 0.05, ee_orientation_error=0.6475 > 0.1; left_arm: joint_error=0.9041 > 0.15, ee_position_error=0.0977 > 0.05, ee_orientation_error=0.3814 > 0.1"
+episode_0003 (1),False,left_arm: joint_error=0.4131 > 0.15
+episode_0004,True,
+episode_0004 (1),False,left_arm: joint_error=0.9365 > 0.15
+episode_0005,False,left_arm: joint_error=0.1881 > 0.15
+episode_0006,True,
+episode_0008,True,
+episode_0011,True,
+episode_0022,False,"right_arm: joint_error=0.8968 > 0.15, gripper_error=0.0107 > 0.01, ee_orientation_error=0.2928 > 0.1"
+episode_0023,False,"right_arm: joint_error=0.1896 > 0.15; left_arm: joint_error=0.8827 > 0.15, ee_orientation_error=0.1157 > 0.1"
+episode_0024,False,"right_arm: joint_error=1.9749 > 0.15, ee_orientation_error=0.1812 > 0.1; left_arm: joint_error=0.4841 > 0.15"
+episode_0026,False,"right_arm: joint_error=1.4607 > 0.15, ee_orientation_error=0.1914 > 0.1; left_arm: joint_error=0.6748 > 0.15, ee_orientation_error=0.1813 > 0.1"
+episode_0041,True,
+episode_0044,False,right_arm: joint_error=0.1766 > 0.15
+episode_0044 (1),True,
+episode_0061,False,right_arm: gripper_error=0.0146 > 0.01

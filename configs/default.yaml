@@ -1,0 +1,37 @@
+data:
+  raw_path: /mnt/public/dht/原力不合格数据
+
+calibration:
+  data_path: /mnt/public/dht/原力不合格数据/二次夹取
+
+arms:
+  - right_arm
+  - left_arm
+
+detection:
+  # mode: fixed or calibrated
+  mode: fixed
+  # fail_mode: any or all
+  fail_mode: any
+
+fixed_home_position:
+  right_arm:
+    joint_positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    gripper: 0.0
+    ee_position: [0.2, 0.0, 0.5]
+    ee_orientation: [0.0, 0.0, 0.0, 1.0]
+  left_arm:
+    joint_positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    gripper: 0.0
+    ee_position: [0.2, 0.0, 0.5]
+    ee_orientation: [0.0, 0.0, 0.0, 1.0]
+
+thresholds:
+  max_joint_error: 0.15
+  gripper_error: 0.01
+  ee_position_error: 0.05
+  ee_orientation_error: 0.1
+
+result_labels:
+  passed: Home
+  failed: Not Home
