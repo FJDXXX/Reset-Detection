@@ -46,6 +46,7 @@ class Config:
     data_raw_path: str = ""
     calibration_data_path: str = ""
     calibration_exclude_episodes: list[str] = field(default_factory=list)
+    calibration_tolerance_factor: float = 3.0
     calibration_tolerance_floor: ToleranceFloor = field(default_factory=ToleranceFloor)
     arms: list[str] = field(default_factory=lambda: ["right_arm", "left_arm"])
     thresholds: Thresholds = field(default_factory=Thresholds)
@@ -71,6 +72,7 @@ class Config:
             data_raw_path=d.get("data", {}).get("raw_path", ""),
             calibration_data_path=d.get("calibration", {}).get("data_path", ""),
             calibration_exclude_episodes=d.get("calibration", {}).get("exclude_episodes", []),
+            calibration_tolerance_factor=d.get("calibration", {}).get("tolerance_factor", 3.0),
             calibration_tolerance_floor=ToleranceFloor.from_dict(
                 d.get("calibration", {}).get("tolerance_floor", {})
             ),

@@ -1,12 +1,12 @@
 import argparse
-from pathlib import Path
 
 from src.config import load_config
-from src.detector import scan_episodes, results_to_dataframe
+from src.detector import scan_episodes
+from src.exporter import export_results
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Reset detection entry point")
+    parser = argparse.ArgumentParser(description="Home position detection entry point")
     parser.add_argument(
         "--data-path", "-d",
         type=str,
@@ -20,10 +20,10 @@ def main():
         help="Path to config YAML file",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output-dir", "-o",
         type=str,
-        default="results.csv",
-        help="Path to output CSV file",
+        default="detection_summary",
+        help="Path to output directory (default: detection_summary)",
     )
     parser.add_argument(
         "--label", "-l",
@@ -45,13 +45,18 @@ def main():
             labels[dir_name] = label
 
     results = scan_episodes(cfg.data_raw_path, cfg, labels=labels or None)
-    df = results_to_dataframe(results)
 
-    output_columns = cfg.output_labels or ["label", "episode", "passed", "fail_reasons"]
-    available = [c for c in output_columns if c in df.columns]
-    df[available].to_csv(args.output, index=False)
-    print(f"Results saved to {args.output}")
-    print(df[available].to_string(index=False))
+    for assessment_type in ("Initialization", "Reset"):
+        json_path, txt_path, stats_path = export_results(
+            results, cfg, assessment_type=assessment_type, output_dir=args.output_dir,
+        )
+        home_key = "first_frame" if assessment_type == "Initialization" else "last_frame"
+        success = sum(1 for r in results if r.get(home_key, True))
+        failed = len(results) - success
+        print(f"[{assessment_type}] Total: {len(results)} | Success: {success} | Failed: {failed}")
+        print(f"  JSON  -> {json_path}")
+        print(f"  TXT   -> {txt_path}")
+        print(f"  Stats -> {stats_path}")
 
 
 if __name__ == "__main__":

@@ -375,8 +375,8 @@ def main() -> None:
     parser.add_argument(
         "--tolerance-factor",
         type=float,
-        default=3.0,
-        help="Multiplier for std to compute tolerance (default: 3.0)",
+        default=None,
+        help="Multiplier for std to compute tolerance (default: from config)",
     )
     parser.add_argument(
         "--dry-run",
@@ -395,7 +395,7 @@ def main() -> None:
         data_path,
         arms=cfg.arms,
         config_path=args.config,
-        tolerance_factor=args.tolerance_factor,
+        tolerance_factor=args.tolerance_factor if args.tolerance_factor is not None else cfg.calibration_tolerance_factor,
         write_config=not args.dry_run,
         exclude_episodes=cfg.calibration_exclude_episodes,
         tolerance_floor={

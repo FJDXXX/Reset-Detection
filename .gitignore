@@ -219,4 +219,5 @@ __marimo__/
 
 data/
 tests/
+detection_summary/
 results.csv

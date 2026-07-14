@@ -36,7 +36,7 @@ home_position:
     - 0.9095332622528076
     gripper: 0.00029247622645997947
 tolerance_floor:
-  gripper: 0.01
+  gripper: 0.001
   ee_position: 0.02
   ee_orientation: 0.05
 tolerances:
@@ -53,7 +53,7 @@ tolerances:
     - 0.019999999552965164
     - 0.019999999552965164
     ee_orientation: 0.05
-    gripper: 0.01
+    gripper: 0.001
   left_arm:
     joint_positions:
     - 0.06471270322799683
@@ -67,4 +67,4 @@ tolerances:
     - 0.019999999552965164
     - 0.025210212916135788
     ee_orientation: 0.05
-    gripper: 0.01
+    gripper: 0.001
