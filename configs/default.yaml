@@ -1,0 +1,29 @@
+data:
+  raw_path: /mnt/public/dht/原力不合格数据
+
+calibration:
+  data_path: /mnt/public/dht/原力不合格数据/二次夹取
+  exclude_episodes:
+    - episode_0021
+    - episode_0025
+  tolerance_floor:
+    gripper: 0.01
+    ee_position: 0.02
+    ee_orientation: 0.05
+
+arms:
+  - right_arm
+  - left_arm
+
+detection:
+  # fixed or calibrated
+  mode: calibrated
+  # any or all
+  fail_mode: any
+
+output:
+  labels:
+    - label
+    - episode
+    - passed
+    # - fail_reasons
