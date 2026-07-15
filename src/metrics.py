@@ -6,7 +6,7 @@ import numpy as np
 
 from .features import get_home_features, get_final_features
 from .loader import Episode
-from .config import Thresholds
+from .config import DetectionMetricsConfig, Thresholds
 
 
 def max_joint_error(j1: np.ndarray, j2: np.ndarray) -> float:
@@ -32,6 +32,7 @@ def compute_episode_metrics(
     thresholds: Thresholds | None = None,
     home_pose: dict[str, Any] | None = None,
     tolerances: dict[str, Any] | None = None,
+    enabled_metrics: DetectionMetricsConfig | None = None,
 ) -> dict:
     if home_pose is not None:
         home = {
@@ -133,5 +134,31 @@ def compute_episode_metrics(
         result["first_ee_ori_fail"] = False
         result["first_frame_home"] = True
         result["last_frame_home"] = True
+
+    if enabled_metrics is not None:
+        if not enabled_metrics.joint_positions:
+            result["joint_fail"] = False
+            result["first_joint_fail"] = False
+        if not enabled_metrics.gripper:
+            result["gripper_fail"] = False
+            result["first_gripper_fail"] = False
+        if not enabled_metrics.ee_position:
+            result["ee_pos_fail"] = False
+            result["first_ee_pos_fail"] = False
+        if not enabled_metrics.ee_orientation:
+            result["ee_ori_fail"] = False
+            result["first_ee_ori_fail"] = False
+        result["first_frame_home"] = not (
+            result["first_joint_fail"]
+            or result["first_gripper_fail"]
+            or result["first_ee_pos_fail"]
+            or result["first_ee_ori_fail"]
+        )
+        result["last_frame_home"] = not (
+            result["joint_fail"]
+            or result["gripper_fail"]
+            or result["ee_pos_fail"]
+            or result["ee_ori_fail"]
+        )
 
     return result

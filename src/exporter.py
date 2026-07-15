@@ -122,16 +122,21 @@ def build_episode_issues(
     assessment_type: str = "Reset",
 ) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
+    enabled = config.detection_metrics
     for am in result.get("arm_metrics", []):
         arm = am["arm"]
-        issues.extend(_build_joint_issues(am, arm, assessment_type))
-        gi = _build_gripper_issue(am, arm, assessment_type)
-        if gi:
-            issues.append(gi)
-        issues.extend(_build_ee_position_issues(am, arm, assessment_type))
-        oi = _build_ee_orientation_issue(am, arm, assessment_type)
-        if oi:
-            issues.append(oi)
+        if enabled.joint_positions:
+            issues.extend(_build_joint_issues(am, arm, assessment_type))
+        if enabled.gripper:
+            gi = _build_gripper_issue(am, arm, assessment_type)
+            if gi:
+                issues.append(gi)
+        if enabled.ee_position:
+            issues.extend(_build_ee_position_issues(am, arm, assessment_type))
+        if enabled.ee_orientation:
+            oi = _build_ee_orientation_issue(am, arm, assessment_type)
+            if oi:
+                issues.append(oi)
     return issues
 
 
@@ -170,6 +175,12 @@ def build_json_report(
 
     return {
         "assessment_type": assessment_type,
+        "enabled_metrics": {
+            "joint_positions": config.detection_metrics.joint_positions,
+            "ee_position": config.detection_metrics.ee_position,
+            "ee_orientation": config.detection_metrics.ee_orientation,
+            "gripper": config.detection_metrics.gripper,
+        },
         "summary": {
             "total_episodes": len(results),
             "passed": passed,
@@ -256,6 +267,15 @@ def build_txt_report(
     lines.append(f"Generated Time:")
     lines.append(f"  {now_str}")
     lines.append("")
+    lines.append("=" * 50)
+    lines.append("Enabled Detection Metrics")
+    lines.append("=" * 50)
+    lines.append("")
+    enabled = config.detection_metrics
+    for name in ("joint_positions", "ee_position", "ee_orientation", "gripper"):
+        mark = "✓" if getattr(enabled, name) else "✗"
+        lines.append(f"  {mark} {name}")
+    lines.append("")
     lines.append(f"Total Episodes:")
     lines.append(f"  {len(results)}")
     lines.append("")
@@ -298,25 +318,33 @@ def build_txt_report(
     lines.append("=" * 50)
     lines.append("")
 
-    joint_count = _count_issue_type(results, config, "joint_not_aligned", assessment_type)
-    gripper_closed = _count_issue_type(results, config, "gripper_not_closed", assessment_type)
-    gripper_opened = _count_issue_type(results, config, "gripper_not_opened", assessment_type)
-    gripper_count = gripper_closed + gripper_opened
-    ee_pos_count = _count_issue_type(results, config, "ee_position_misaligned", assessment_type)
-    ee_ori_count = _count_issue_type(results, config, "ee_orientation_misaligned", assessment_type)
+    enabled = config.detection_metrics
 
-    lines.append("Joint Alignment Failures:")
-    lines.append(f"  {joint_count}")
-    lines.append("")
-    lines.append(f"Gripper Failures:")
-    lines.append(f"  {gripper_count}")
-    lines.append("")
-    lines.append(f"EE Position Failures:")
-    lines.append(f"  {ee_pos_count}")
-    lines.append("")
-    lines.append(f"EE Orientation Failures:")
-    lines.append(f"  {ee_ori_count}")
-    lines.append("")
+    if enabled.joint_positions:
+        joint_count = _count_issue_type(results, config, "joint_not_aligned", assessment_type)
+        lines.append("Joint Alignment Failures:")
+        lines.append(f"  {joint_count}")
+        lines.append("")
+
+    if enabled.gripper:
+        gripper_closed = _count_issue_type(results, config, "gripper_not_closed", assessment_type)
+        gripper_opened = _count_issue_type(results, config, "gripper_not_opened", assessment_type)
+        gripper_count = gripper_closed + gripper_opened
+        lines.append("Gripper Failures:")
+        lines.append(f"  {gripper_count}")
+        lines.append("")
+
+    if enabled.ee_position:
+        ee_pos_count = _count_issue_type(results, config, "ee_position_misaligned", assessment_type)
+        lines.append("EE Position Failures:")
+        lines.append(f"  {ee_pos_count}")
+        lines.append("")
+
+    if enabled.ee_orientation:
+        ee_ori_count = _count_issue_type(results, config, "ee_orientation_misaligned", assessment_type)
+        lines.append("EE Orientation Failures:")
+        lines.append(f"  {ee_ori_count}")
+        lines.append("")
 
     return "\n".join(lines)
 
@@ -329,13 +357,16 @@ def build_stats_report(
     success = 0
     failed = 0
     by_label: dict[str, dict[str, int]] = {}
-    issue_counts: dict[str, int] = {
-        "joint_not_aligned": 0,
-        "gripper_not_closed": 0,
-        "gripper_not_opened": 0,
-        "ee_position_misaligned": 0,
-        "ee_orientation_misaligned": 0,
-    }
+    issue_counts: dict[str, int] = {}
+    if config.detection_metrics.joint_positions:
+        issue_counts["joint_not_aligned"] = 0
+    if config.detection_metrics.gripper:
+        issue_counts["gripper_not_closed"] = 0
+        issue_counts["gripper_not_opened"] = 0
+    if config.detection_metrics.ee_position:
+        issue_counts["ee_position_misaligned"] = 0
+    if config.detection_metrics.ee_orientation:
+        issue_counts["ee_orientation_misaligned"] = 0
 
     for r in results:
         label = r.get("label", "")

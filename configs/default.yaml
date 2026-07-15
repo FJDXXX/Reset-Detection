@@ -17,3 +17,10 @@ detection:
   mode: calibrated
   # any or all
   fail_mode: any
+  # enable/disable individual detection metrics
+
+  metrics:
+    joint_positions: false
+    ee_position: true
+    ee_orientation: true
+    gripper: true

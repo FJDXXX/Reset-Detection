@@ -41,6 +41,31 @@ class ToleranceFloor:
         )
 
 
+VALID_METRICS = {"joint_positions", "ee_position", "ee_orientation", "gripper"}
+
+
+@dataclass
+class DetectionMetricsConfig:
+    joint_positions: bool = True
+    ee_position: bool = True
+    ee_orientation: bool = True
+    gripper: bool = True
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> DetectionMetricsConfig:
+        unknown = set(d.keys()) - VALID_METRICS
+        if unknown:
+            raise ValueError(
+                f"Unknown detection metric(s): {', '.join(sorted(unknown))}"
+            )
+        return cls(
+            joint_positions=d.get("joint_positions", cls.joint_positions),
+            ee_position=d.get("ee_position", cls.ee_position),
+            ee_orientation=d.get("ee_orientation", cls.ee_orientation),
+            gripper=d.get("gripper", cls.gripper),
+        )
+
+
 @dataclass
 class Config:
     data_raw_path: str = ""
@@ -56,6 +81,7 @@ class Config:
     output_labels: list[str] | None = None
     detection_mode: str = "fixed"
     fail_mode: str = "any"
+    detection_metrics: DetectionMetricsConfig = field(default_factory=DetectionMetricsConfig)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Config:
@@ -84,6 +110,9 @@ class Config:
             output_labels=d.get("output", {}).get("labels"),
             detection_mode=detection_mode,
             fail_mode=fail_mode,
+            detection_metrics=DetectionMetricsConfig.from_dict(
+                d.get("detection", {}).get("metrics", {})
+            ),
         )
 
 

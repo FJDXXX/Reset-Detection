@@ -64,11 +64,13 @@ def check_episode(
                 "Configure thresholds in config YAML."
             )
 
+        enabled = config.detection_metrics
         metrics = compute_episode_metrics(
             episode, arm,
             thresholds=thresholds,
             home_pose=home_pose,
             tolerances=tolerances,
+            enabled_metrics=enabled,
         )
 
         if tolerances is not None:
@@ -96,22 +98,22 @@ def check_episode(
         arm_results.append(metrics)
 
         first_reasons = []
-        if metrics.get("first_joint_fail"):
+        if enabled.joint_positions and metrics.get("first_joint_fail"):
             first_reasons.append(
                 f"joint_error={metrics['first_max_joint_error']:.4f} > "
                 f"{tolerances['joint_positions'] if tolerances else config.thresholds.max_joint_error}"
             )
-        if metrics.get("first_gripper_fail"):
+        if enabled.gripper and metrics.get("first_gripper_fail"):
             first_reasons.append(
                 f"gripper_error={metrics['first_gripper_error']:.4f} > "
                 f"{tolerances['gripper'] if tolerances else config.thresholds.gripper_error}"
             )
-        if metrics.get("first_ee_pos_fail"):
+        if enabled.ee_position and metrics.get("first_ee_pos_fail"):
             first_reasons.append(
                 f"ee_position_error={metrics['first_ee_position_error']:.4f} > "
                 f"{tolerances['ee_position'] if tolerances else config.thresholds.ee_position_error}"
             )
-        if metrics.get("first_ee_ori_fail"):
+        if enabled.ee_orientation and metrics.get("first_ee_ori_fail"):
             first_reasons.append(
                 f"ee_orientation_error={metrics['first_ee_orientation_error']:.4f} > "
                 f"{tolerances['ee_orientation'] if tolerances else config.thresholds.ee_orientation_error}"
@@ -120,22 +122,22 @@ def check_episode(
             first_fail_reasons.append(f"{arm}: {', '.join(first_reasons)}")
 
         last_reasons = []
-        if metrics.get("joint_fail"):
+        if enabled.joint_positions and metrics.get("joint_fail"):
             last_reasons.append(
                 f"joint_error={metrics['max_joint_error']:.4f} > "
                 f"{tolerances['joint_positions'] if tolerances else config.thresholds.max_joint_error}"
             )
-        if metrics.get("gripper_fail"):
+        if enabled.gripper and metrics.get("gripper_fail"):
             last_reasons.append(
                 f"gripper_error={metrics['gripper_error']:.4f} > "
                 f"{tolerances['gripper'] if tolerances else config.thresholds.gripper_error}"
             )
-        if metrics.get("ee_pos_fail"):
+        if enabled.ee_position and metrics.get("ee_pos_fail"):
             last_reasons.append(
                 f"ee_position_error={metrics['ee_position_error']:.4f} > "
                 f"{tolerances['ee_position'] if tolerances else config.thresholds.ee_position_error}"
             )
-        if metrics.get("ee_ori_fail"):
+        if enabled.ee_orientation and metrics.get("ee_ori_fail"):
             last_reasons.append(
                 f"ee_orientation_error={metrics['ee_orientation_error']:.4f} > "
                 f"{tolerances['ee_orientation'] if tolerances else config.thresholds.ee_orientation_error}"
