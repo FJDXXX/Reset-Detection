@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from .base_loader import BaseLoader
 from .yuanli_loader import YuanliLoader
-from .told_towel_loader import ToldTowelLoader
+from .fold_towel_loader import FoldTowelLoader
 
 
 class LoaderFactory:
     _registry: dict[str, type[BaseLoader]] = {
         "yuanli": YuanliLoader,
-        "told_towel": ToldTowelLoader,
+        "fold_towel": FoldTowelLoader,
     }
 
     @classmethod

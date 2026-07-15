@@ -6,6 +6,6 @@ from src.loader import Episode
 from .base_loader import BaseLoader
 
 
-class ToldTowelLoader(BaseLoader):
+class FoldTowelLoader(BaseLoader):
     def load_episode(self, episode_path: Path) -> Episode:
-        raise NotImplementedError("ToldTowelLoader not yet implemented")
+        raise NotImplementedError("FoldTowelLoader not yet implemented")
