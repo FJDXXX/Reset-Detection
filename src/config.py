@@ -8,19 +8,19 @@ import yaml
 
 
 @dataclass
-class Thresholds:
-    max_joint_error: float = 0.15
-    gripper_error: float = 0.01
-    ee_position_error: float = 0.05
-    ee_orientation_error: float = 0.1
+class FixedTolerances:
+    joint_positions: float = 0.15
+    gripper: float = 0.01
+    ee_position: float = 0.05
+    ee_orientation: float = 0.1
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> Thresholds:
+    def from_dict(cls, d: dict[str, Any]) -> FixedTolerances:
         return cls(
-            max_joint_error=d.get("max_joint_error", cls.max_joint_error),
-            gripper_error=d.get("gripper_error", cls.gripper_error),
-            ee_position_error=d.get("ee_position_error", cls.ee_position_error),
-            ee_orientation_error=d.get("ee_orientation_error", cls.ee_orientation_error),
+            joint_positions=d.get("joint_positions", cls.joint_positions),
+            gripper=d.get("gripper", cls.gripper),
+            ee_position=d.get("ee_position", cls.ee_position),
+            ee_orientation=d.get("ee_orientation", cls.ee_orientation),
         )
 
 
@@ -71,77 +71,107 @@ class Config:
     data_raw_path: str = ""
     calibration_data_path: str = ""
     calibration_exclude_episodes: list[str] = field(default_factory=list)
-    calibration_tolerance_factor: float = 3.0
-    calibration_tolerance_floor: ToleranceFloor = field(default_factory=ToleranceFloor)
-    arms: list[str] = field(default_factory=lambda: ["right_arm", "left_arm"])
-    thresholds: Thresholds = field(default_factory=Thresholds)
-    home_position: dict | None = None
-    tolerances: dict | None = None
-    fixed_home_position: dict | None = None
-    output_labels: list[str] | None = None
+
+    robot_name: str = "yuanli"
     detection_mode: str = "fixed"
     fail_mode: str = "any"
     detection_metrics: DetectionMetricsConfig = field(default_factory=DetectionMetricsConfig)
+    output_labels: list[str] | None = None
+
+    fixed: dict | None = None
+    calibrated: dict | None = None
+
+    home_position: dict | None = None
+    tolerances: dict | None = None
+    tolerance_floor: dict | None = None
+
+    sigma_factor: float = 3.0
+    use_tolerance_floor: bool = True
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> Config:
-        raw_mode = d.get("detection", {}).get("mode", "fixed")
-        raw_fail = d.get("detection", {}).get("fail_mode", "any")
+    def load(cls, path: str | Path = "configs/default.yaml") -> Config:
+        path = Path(path)
+        if not path.exists():
+            return cls()
 
-        detection_mode = raw_mode
-        fail_mode = raw_fail
-        if raw_mode in ("any", "all"):
-            fail_mode = raw_mode
-            detection_mode = "fixed"
+        with open(path) as f:
+            raw = yaml.safe_load(f) or {}
+
+        base_dir = path.parent
+
+        robot_name = raw.get("robot", "yuanli")
+        mode_name = raw.get("mode", "fixed")
+
+        robot_config: dict = {}
+        robot_path = base_dir / "robots" / f"{robot_name}.yaml"
+        if robot_path.exists():
+            with open(robot_path) as f:
+                robot_config = yaml.safe_load(f) or {}
+
+        mode_config: dict = {}
+        mode_path = base_dir / "modes" / f"{mode_name}.yaml"
+        if mode_path.exists():
+            with open(mode_path) as f:
+                mode_config = yaml.safe_load(f) or {}
+
+        mode_inner = mode_config.get("mode", {})
+        robot_inner = robot_config.get("robot", {})
+
+        robot_name = robot_inner.get("name", robot_name)
+
+        fixed_section = robot_config.get("fixed")
+        calibrated_section = robot_config.get("calibrated")
+
+        home_position = None
+        tolerances = None
+        tolerance_floor = None
+
+        if mode_name == "calibrated" and calibrated_section is not None:
+            home_position = calibrated_section.get("home_position")
+            tolerances = calibrated_section.get("tolerances")
+            tolerance_floor = calibrated_section.get("tolerance_floor")
+        elif fixed_section is not None:
+            home_position = fixed_section.get("home_position")
+            tolerances = fixed_section.get("tolerances")
 
         return cls(
-            data_raw_path=d.get("data", {}).get("raw_path", ""),
-            calibration_data_path=d.get("calibration", {}).get("data_path", ""),
-            calibration_exclude_episodes=d.get("calibration", {}).get("exclude_episodes", []),
-            calibration_tolerance_factor=d.get("calibration", {}).get("tolerance_factor", 3.0),
-            calibration_tolerance_floor=ToleranceFloor.from_dict(
-                d.get("calibration", {}).get("tolerance_floor", {})
-            ),
-            arms=d.get("arms", ["right_arm", "left_arm"]),
-            thresholds=Thresholds.from_dict(d.get("thresholds", {})),
-            home_position=d.get("home_position"),
-            tolerances=d.get("tolerances"),
-            fixed_home_position=d.get("fixed_home_position"),
-            output_labels=d.get("output", {}).get("labels"),
-            detection_mode=detection_mode,
-            fail_mode=fail_mode,
+            robot_name=robot_name,
+            detection_mode=mode_inner.get("name", mode_name),
+            data_raw_path=raw.get("data", {}).get("raw_path", ""),
+            calibration_data_path=raw.get("calibration", {}).get("data_path", ""),
+            calibration_exclude_episodes=raw.get("calibration", {}).get("exclude_episodes", []),
+            fail_mode=raw.get("detection", {}).get("fail_mode", "any"),
             detection_metrics=DetectionMetricsConfig.from_dict(
-                d.get("detection", {}).get("metrics", {})
+                raw.get("detection", {}).get("metrics", {})
             ),
+            fixed=fixed_section,
+            calibrated=calibrated_section,
+            home_position=home_position,
+            tolerances=tolerances,
+            tolerance_floor=tolerance_floor,
+            sigma_factor=mode_inner.get("sigma_factor", 3.0),
+            use_tolerance_floor=mode_inner.get("use_tolerance_floor", True),
+            output_labels=raw.get("output", {}).get("labels"),
         )
+
+    def get_home_for_arm(self, arm: str) -> dict | None:
+        if self.home_position is None:
+            return None
+        return self.home_position.get(arm)
+
+    def get_tolerances_for_arm(self, arm: str) -> dict | None:
+        if self.tolerances is None:
+            return None
+        return self.tolerances.get(arm)
+
+    def get_fixed_tolerances_for_arm(self, arm: str) -> FixedTolerances | None:
+        if self.fixed is None:
+            return None
+        arm_tols = self.fixed.get("tolerances", {}).get(arm)
+        if arm_tols is None:
+            return None
+        return FixedTolerances.from_dict(arm_tols)
 
 
 def load_config(path: str | Path = "configs/default.yaml") -> Config:
-    path = Path(path)
-    if not path.exists():
-        return Config()
-    with open(path, "r") as f:
-        raw = yaml.safe_load(f) or {}
-
-    base_dir = path.parent
-    cal_path = base_dir / "calibrated.yaml"
-    if cal_path.exists():
-        with open(cal_path, "r") as f:
-            cal = yaml.safe_load(f) or {}
-        for k in ("home_position", "tolerances"):
-            if k in cal:
-                raw[k] = cal[k]
-        if "tolerance_floor" in cal:
-            raw.setdefault("calibration", {})
-            cal_tf = raw["calibration"].setdefault("tolerance_floor", {})
-            cal_tf.update(cal["tolerance_floor"])
-
-    fixed_path = base_dir / "fixed.yaml"
-    if fixed_path.exists():
-        with open(fixed_path, "r") as f:
-            fx = yaml.safe_load(f) or {}
-        for k in ("fixed_home_position", "thresholds"):
-            if k in fx:
-                raw[k] = fx[k]
-
-    return Config.from_dict(raw)
+    return Config.load(path)

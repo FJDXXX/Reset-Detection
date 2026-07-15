@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -27,10 +27,13 @@ class Episode:
     meta: dict[str, Any]
     arms: dict[str, ArmActionData] = field(default_factory=dict)
 
-    def get_start_pose(self, arm: str = "right_arm") -> dict[str, Any]:
+    def get_arms(self) -> list[str]:
+        return list(self.arms.keys())
+
+    def get_start_pose(self, arm: str) -> dict[str, Any]:
         return self.arms[arm].start_pose
 
-    def get_end_pose(self, arm: str = "right_arm") -> dict[str, Any]:
+    def get_end_pose(self, arm: str) -> dict[str, Any]:
         return self.arms[arm].end_pose
 
 

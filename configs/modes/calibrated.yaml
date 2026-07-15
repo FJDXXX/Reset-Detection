@@ -1,0 +1,4 @@
+mode:
+  name: calibrated
+  sigma_factor: 3.0
+  use_tolerance_floor: true

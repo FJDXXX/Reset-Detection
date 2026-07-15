@@ -1,0 +1,124 @@
+robot:
+  name: told_towel
+
+fixed:
+  home_position:
+    right_arm:
+      joint_positions:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      ee_position:
+      - 0.2
+      - 0.0
+      - 0.5
+      ee_orientation:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      gripper: 0.0
+    left_arm:
+      joint_positions:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      ee_position:
+      - 0.2
+      - 0.0
+      - 0.5
+      ee_orientation:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      gripper: 0.0
+  tolerances:
+    right_arm:
+      joint_positions: 0.15
+      ee_position: 0.05
+      ee_orientation: 0.1
+      gripper: 0.01
+    left_arm:
+      joint_positions: 0.15
+      ee_position: 0.05
+      ee_orientation: 0.1
+      gripper: 0.01
+
+calibrated:
+  home_position:
+    right_arm:
+      joint_positions:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      ee_position:
+      - 0.2
+      - 0.0
+      - 0.5
+      ee_orientation:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      gripper: 0.0
+    left_arm:
+      joint_positions:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      ee_position:
+      - 0.2
+      - 0.0
+      - 0.5
+      ee_orientation:
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.0
+      gripper: 0.0
+  tolerances:
+    right_arm:
+      joint_positions:
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      ee_position:
+      - 0.02
+      - 0.02
+      - 0.02
+      ee_orientation: 0.05
+      gripper: 0.001
+    left_arm:
+      joint_positions:
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      ee_position:
+      - 0.02
+      - 0.02
+      - 0.02
+      ee_orientation: 0.05
+      gripper: 0.001
+  tolerance_floor:
+    gripper: 0.001
+    ee_position: 0.02
+    ee_orientation: 0.05

@@ -14,7 +14,7 @@ from .features import (
     extract_ee_positions,
     extract_ee_orientation,
 )
-from .loader import load_episode
+from .loaders.loader_factory import LoaderFactory
 from .metrics import ee_orientation_error
 
 
@@ -31,7 +31,9 @@ def find_episode_dirs(root_dir: Path) -> list[Path]:
 
 
 def collect_start_poses(
-    episode_dirs: list[Path], arms: list[str]
+    episode_dirs: list[Path],
+    loader,
+    arms: list[str],
 ) -> dict[str, dict[str, list[np.ndarray]]]:
     collected: dict[str, dict[str, list[np.ndarray]]] = {}
     for arm in arms:
@@ -44,11 +46,15 @@ def collect_start_poses(
 
     for ep_dir in episode_dirs:
         try:
-            episode = load_episode(ep_dir)
+            episode = loader.load_episode(ep_dir)
         except Exception:
             continue
         for arm in arms:
             if arm not in episode.arms:
+                continue
+            if not episode.arms[arm].frames:
+                continue
+            if "joint_positions" not in episode.arms[arm].frames[0]:
                 continue
             pose = episode.get_start_pose(arm)
             collected[arm]["joint_positions"].append(extract_joint_positions(pose))
@@ -99,7 +105,7 @@ def build_tolerances(
         raw = factor * stats[key]["std"]
         f = floor.get(key, 0.0)
         tol[key] = np.maximum(raw, f).tolist()
-    tol["ee_orientation"] = [0.0]  # placeholder, overwritten in calibrate()
+    tol["ee_orientation"] = [0.0]
     tol["gripper"] = float(
         max(factor * stats["gripper"]["std"], floor.get("gripper", 0.0))
     )
@@ -135,6 +141,7 @@ def check_tolerance_warnings(tolerances: dict[str, Any], arm: str) -> None:
 
 def calibrate(
     data_path: str | Path,
+    robot_name: str | None = None,
     arms: list[str] | None = None,
     config_path: str | Path = "configs/default.yaml",
     tolerance_factor: float = 3.0,
@@ -146,8 +153,14 @@ def calibrate(
     if not data_path.exists():
         raise FileNotFoundError(f"Data path not found: {data_path}")
 
+    cfg = load_config(config_path)
+    robot_name = robot_name or cfg.robot_name
+    loader = LoaderFactory.get_loader(robot_name)
+
     if arms is None:
-        arms = ["right_arm"]
+        arms = list((cfg.fixed or {}).get("home_position", {}).keys())
+    if not arms:
+        arms = ["right_arm", "left_arm"]
 
     exclude_set = set(exclude_episodes or [])
 
@@ -164,7 +177,15 @@ def calibrate(
             "Nothing to calibrate."
         )
 
-    collected = collect_start_poses(episode_dirs, arms)
+    collected = collect_start_poses(episode_dirs, loader, arms)
+
+    for arm in arms:
+        for key in ["joint_positions", "gripper", "ee_position", "ee_orientation"]:
+            if not collected[arm][key]:
+                raise ValueError(
+                    f"No valid data collected for {arm}.{key}. "
+                    f"Check that episode data contains the required fields."
+                )
 
     result: dict[str, Any] = {
         "home_position": {},
@@ -189,8 +210,6 @@ def calibrate(
                 raise ValueError(f"No data for {arm}.{key}")
             stats[key] = compute_statistics(values)
 
-        # Build statistics dict for display; ee_orientation will be overwritten
-        # with angular error stats after home_position is known.
         result["statistics"][arm] = {
             k: {
                 "mean": v["mean"].tolist() if isinstance(v["mean"], np.ndarray) else v["mean"],
@@ -205,8 +224,6 @@ def calibrate(
         result["tolerances"][arm] = build_tolerances(stats, factor=tolerance_factor, floor=tf)
         result["tolerance_details"][arm] = {}
 
-        # Overwrite ee_orientation tolerance with angular-distance-based tolerance.
-        # This ensures tolerance and error are in the same unit (rad).
         home_ori = np.array(result["home_position"][arm]["ee_orientation"], dtype=np.float64)
         ori_samples = collected[arm]["ee_orientation"]
         angular_errors = [ee_orientation_error(s, home_ori) for s in ori_samples]
@@ -234,7 +251,6 @@ def calibrate(
             "factor": tolerance_factor,
         }
 
-        # Record detailed tolerance breakdown for display
         gripper_3s = float(tolerance_factor * stats["gripper"]["std"])
         gripper_floor = tf.get("gripper", 0.0)
         result["tolerance_details"][arm]["gripper"] = {
@@ -249,12 +265,11 @@ def calibrate(
             "floor": ori_floor,
             "final_tolerance": final_ori_tol,
         }
-        for key, label in [("joint_positions", "joint_positions"),
-                           ("ee_position", "ee_position")]:
+        for key in ["joint_positions", "ee_position"]:
             raw_3s = (tolerance_factor * stats[key]["std"]).tolist()
             f = tf.get(key, 0.0)
             final_tol = np.maximum(tolerance_factor * stats[key]["std"], f).tolist()
-            result["tolerance_details"][arm][label] = {
+            result["tolerance_details"][arm][key] = {
                 "raw_std": stats[key]["std"].tolist(),
                 "3sigma": raw_3s,
                 "floor": f,
@@ -262,30 +277,31 @@ def calibrate(
             }
 
     if write_config:
-        write_calibration_to_config(config_path, result)
+        write_calibration_to_robot_config(config_path, robot_name, result)
 
     return result
 
 
-def write_calibration_to_config(
-    config_path: str | Path, calibration_result: dict[str, Any]
+def write_calibration_to_robot_config(
+    config_path: str | Path, robot_name: str, calibration_result: dict[str, Any]
 ) -> None:
     config_path = Path(config_path)
-    cal_path = config_path.parent / "calibrated.yaml"
+    robot_config_path = config_path.parent / "robots" / f"{robot_name}.yaml"
 
-    if cal_path.exists():
-        with open(cal_path, "r") as f:
+    if robot_config_path.exists():
+        with open(robot_config_path) as f:
             raw = yaml.safe_load(f) or {}
     else:
-        raw = {}
+        raw = {"robot": {"name": robot_name}}
 
-    raw["home_position"] = calibration_result["home_position"]
-    raw["tolerances"] = calibration_result["tolerances"]
+    raw.setdefault("calibrated", {})
+    raw["calibrated"]["home_position"] = calibration_result["home_position"]
+    raw["calibrated"]["tolerances"] = calibration_result["tolerances"]
 
-    with open(cal_path, "w") as f:
+    with open(robot_config_path, "w") as f:
         yaml.dump(raw, f, sort_keys=False, allow_unicode=True)
 
-    print(f"Calibration results written to {cal_path}")
+    print(f"Calibration results written to {robot_config_path}")
 
 
 def print_summary(result: dict[str, Any]) -> None:
@@ -333,7 +349,6 @@ def print_summary(result: dict[str, Any]) -> None:
             print(f"  -> orientation_tolerance: {ot['value']:.6f} (factor={ot['factor']})")
         print()
 
-        # Show detailed tolerance breakdown
         tdet = result.get("tolerance_details", {}).get(arm, {})
         if tdet:
             print("  Tolerance details:")
@@ -373,6 +388,12 @@ def main() -> None:
         help="Override calibration data path",
     )
     parser.add_argument(
+        "--robot", "-r",
+        type=str,
+        default=None,
+        help="Robot name (overrides config)",
+    )
+    parser.add_argument(
         "--tolerance-factor",
         type=float,
         default=None,
@@ -393,16 +414,16 @@ def main() -> None:
 
     result = calibrate(
         data_path,
-        arms=cfg.arms,
+        robot_name=args.robot or cfg.robot_name,
         config_path=args.config,
-        tolerance_factor=args.tolerance_factor if args.tolerance_factor is not None else cfg.calibration_tolerance_factor,
+        tolerance_factor=args.tolerance_factor if args.tolerance_factor is not None else cfg.sigma_factor,
         write_config=not args.dry_run,
         exclude_episodes=cfg.calibration_exclude_episodes,
         tolerance_floor={
-            "gripper": cfg.calibration_tolerance_floor.gripper,
-            "ee_position": cfg.calibration_tolerance_floor.ee_position,
-            "ee_orientation": cfg.calibration_tolerance_floor.ee_orientation,
-            "joint_positions": cfg.calibration_tolerance_floor.joint_positions,
+            "gripper": (cfg.tolerance_floor or {}).get("gripper", 0.0),
+            "ee_position": (cfg.tolerance_floor or {}).get("ee_position", 0.0),
+            "ee_orientation": (cfg.tolerance_floor or {}).get("ee_orientation", 0.0),
+            "joint_positions": (cfg.tolerance_floor or {}).get("joint_positions", 0.0),
         },
     )
 

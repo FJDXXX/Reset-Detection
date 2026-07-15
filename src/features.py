@@ -27,9 +27,7 @@ def extract_ee_full(frame: dict[str, Any]) -> np.ndarray:
     return np.array(frame["ee_positions"], dtype=np.float32)
 
 
-def get_home_features(
-    episode: Episode, arm: str = "right_arm"
-) -> dict[str, Any]:
+def get_home_features(episode: Episode, arm: str) -> dict[str, Any]:
     pose = episode.get_start_pose(arm)
     return {
         "joint_positions": extract_joint_positions(pose),
@@ -39,9 +37,7 @@ def get_home_features(
     }
 
 
-def get_final_features(
-    episode: Episode, arm: str = "right_arm"
-) -> dict[str, Any]:
+def get_final_features(episode: Episode, arm: str) -> dict[str, Any]:
     pose = episode.get_end_pose(arm)
     return {
         "joint_positions": extract_joint_positions(pose),
@@ -51,9 +47,7 @@ def get_final_features(
     }
 
 
-def collect_arm_trajectory(
-    episode: Episode, arm: str = "right_arm"
-) -> dict[str, np.ndarray]:
+def collect_arm_trajectory(episode: Episode, arm: str) -> dict[str, np.ndarray]:
     frames = episode.arms[arm].frames
     n = len(frames)
     if n == 0:

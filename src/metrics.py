@@ -6,7 +6,7 @@ import numpy as np
 
 from .features import get_home_features, get_final_features
 from .loader import Episode
-from .config import DetectionMetricsConfig, Thresholds
+from .config import DetectionMetricsConfig
 
 
 def max_joint_error(j1: np.ndarray, j2: np.ndarray) -> float:
@@ -28,8 +28,7 @@ def ee_orientation_error(q1: np.ndarray, q2: np.ndarray) -> float:
 
 def compute_episode_metrics(
     episode: Episode,
-    arm: str = "right_arm",
-    thresholds: Thresholds | None = None,
+    arm: str,
     home_pose: dict[str, Any] | None = None,
     tolerances: dict[str, Any] | None = None,
     enabled_metrics: DetectionMetricsConfig | None = None,
@@ -105,22 +104,6 @@ def compute_episode_metrics(
         first_gripper_fail = first_ge > tolerances["gripper"]
         first_ee_pos_fail = first_pe > tol_ee_pos
         first_ee_ori_fail = first_oe > tol_ee_ori
-        result["first_joint_fail"] = first_joint_fail
-        result["first_gripper_fail"] = first_gripper_fail
-        result["first_ee_pos_fail"] = first_ee_pos_fail
-        result["first_ee_ori_fail"] = first_ee_ori_fail
-        result["first_frame_home"] = not (first_joint_fail or first_gripper_fail or first_ee_pos_fail or first_ee_ori_fail)
-        result["last_frame_home"] = not (result["joint_fail"] or result["gripper_fail"] or result["ee_pos_fail"] or result["ee_ori_fail"])
-    elif thresholds is not None:
-        result["joint_fail"] = mje > thresholds.max_joint_error
-        result["gripper_fail"] = ge > thresholds.gripper_error
-        result["ee_pos_fail"] = pe > thresholds.ee_position_error
-        result["ee_ori_fail"] = oe > thresholds.ee_orientation_error
-
-        first_joint_fail = first_mje > thresholds.max_joint_error
-        first_gripper_fail = first_ge > thresholds.gripper_error
-        first_ee_pos_fail = first_pe > thresholds.ee_position_error
-        first_ee_ori_fail = first_oe > thresholds.ee_orientation_error
         result["first_joint_fail"] = first_joint_fail
         result["first_gripper_fail"] = first_gripper_fail
         result["first_ee_pos_fail"] = first_ee_pos_fail

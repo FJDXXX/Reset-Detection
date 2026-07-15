@@ -3,147 +3,75 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .config import Config
-from .loader import load_episode, Episode
+from .config import Config, DetectionMetricsConfig
+from .loaders.loader_factory import LoaderFactory
+from .loader import Episode
 from .metrics import compute_episode_metrics
-
-
-def _resolve_home_for_arm(config: Config, arm: str) -> tuple[dict | None, str | None]:
-    """Resolve home_pose and threshold_type for an arm.
-
-    Returns (home_pose, threshold_type) where threshold_type is
-    "tolerances" or "thresholds".
-    """
-    if config.detection_mode == "calibrated":
-        hp = config.home_position
-        if hp is None or arm not in hp:
-            raise ValueError(
-                f"calibrated mode requires home_position for '{arm}'. "
-                "Run calibration.py first."
-            )
-        if config.tolerances is None or arm not in config.tolerances:
-            raise ValueError(
-                f"calibrated mode requires tolerances for '{arm}'. "
-                "Run calibration.py first."
-            )
-        return hp[arm], "tolerances"
-
-    # fixed mode (or backward-compat fallback)
-    hp = config.fixed_home_position
-    if hp is not None and arm in hp:
-        return hp[arm], "thresholds"
-    if config.home_position is not None and arm in config.home_position:
-        return config.home_position[arm], "thresholds"
-    return None, "thresholds"
 
 
 def check_episode(
     episode: Episode,
-    config: Config,
+    home_position: dict[str, dict],
+    tolerances: dict[str, dict] | None = None,
+    enabled_metrics: DetectionMetricsConfig | None = None,
+    fail_mode: str = "any",
     label: str = "",
 ) -> dict[str, Any]:
+    if enabled_metrics is None:
+        enabled_metrics = DetectionMetricsConfig()
+
     arm_results: list[dict[str, Any]] = []
     first_fail_reasons: list[str] = []
     last_fail_reasons: list[str] = []
 
-    for arm in config.arms:
+    arms = episode.get_arms()
+
+    for arm in arms:
         if arm not in episode.arms:
             continue
         if "joint_positions" not in episode.arms[arm].frames[0]:
             continue
 
-        home_pose, thresh_type = _resolve_home_for_arm(config, arm)
-        tolerances = None
-        thresholds = config.thresholds
+        home_pose = home_position.get(arm) if home_position else None
+        if home_pose is None:
+            continue
 
-        if thresh_type == "tolerances":
-            tolerances = config.tolerances[arm]
-        elif thresholds is None:
-            raise ValueError(
-                f"fixed mode requires thresholds for '{arm}'. "
-                "Configure thresholds in config YAML."
-            )
+        arm_tolerances = tolerances.get(arm) if tolerances else None
 
-        enabled = config.detection_metrics
         metrics = compute_episode_metrics(
             episode, arm,
-            thresholds=thresholds,
             home_pose=home_pose,
-            tolerances=tolerances,
-            enabled_metrics=enabled,
+            tolerances=arm_tolerances,
+            enabled_metrics=enabled_metrics,
         )
 
-        if tolerances is not None:
-            jt = tolerances["joint_positions"]
+        if arm_tolerances is not None:
+            jt = arm_tolerances["joint_positions"]
             metrics["per_joint_tolerances"] = (
                 jt if isinstance(jt, list) else [jt] * 6
             )
-            et = tolerances.get("ee_position", 0.0)
+            et = arm_tolerances.get("ee_position", 0.0)
             metrics["per_axis_tolerances"] = (
                 et if isinstance(et, list) else [et, et, et]
             )
-            metrics["gripper_tolerance"] = tolerances.get("gripper", 0.0)
+            metrics["gripper_tolerance"] = arm_tolerances.get("gripper", 0.0)
             metrics["ee_orientation_tolerance"] = (
-                max(tolerances["ee_orientation"])
-                if isinstance(tolerances["ee_orientation"], list)
-                else tolerances["ee_orientation"]
+                max(arm_tolerances["ee_orientation"])
+                if isinstance(arm_tolerances["ee_orientation"], list)
+                else arm_tolerances["ee_orientation"]
             )
-        else:
-            t = thresholds
-            metrics["per_joint_tolerances"] = [t.max_joint_error] * 6
-            metrics["per_axis_tolerances"] = [t.ee_position_error] * 3
-            metrics["gripper_tolerance"] = t.gripper_error
-            metrics["ee_orientation_tolerance"] = t.ee_orientation_error
 
         arm_results.append(metrics)
 
-        first_reasons = []
-        if enabled.joint_positions and metrics.get("first_joint_fail"):
-            first_reasons.append(
-                f"joint_error={metrics['first_max_joint_error']:.4f} > "
-                f"{tolerances['joint_positions'] if tolerances else config.thresholds.max_joint_error}"
-            )
-        if enabled.gripper and metrics.get("first_gripper_fail"):
-            first_reasons.append(
-                f"gripper_error={metrics['first_gripper_error']:.4f} > "
-                f"{tolerances['gripper'] if tolerances else config.thresholds.gripper_error}"
-            )
-        if enabled.ee_position and metrics.get("first_ee_pos_fail"):
-            first_reasons.append(
-                f"ee_position_error={metrics['first_ee_position_error']:.4f} > "
-                f"{tolerances['ee_position'] if tolerances else config.thresholds.ee_position_error}"
-            )
-        if enabled.ee_orientation and metrics.get("first_ee_ori_fail"):
-            first_reasons.append(
-                f"ee_orientation_error={metrics['first_ee_orientation_error']:.4f} > "
-                f"{tolerances['ee_orientation'] if tolerances else config.thresholds.ee_orientation_error}"
-            )
-        if first_reasons:
-            first_fail_reasons.append(f"{arm}: {', '.join(first_reasons)}")
+        first_reasons = _build_fail_reasons(
+            metrics, "first_", enabled_metrics, arm, arm_tolerances
+        )
+        first_fail_reasons.extend(first_reasons)
 
-        last_reasons = []
-        if enabled.joint_positions and metrics.get("joint_fail"):
-            last_reasons.append(
-                f"joint_error={metrics['max_joint_error']:.4f} > "
-                f"{tolerances['joint_positions'] if tolerances else config.thresholds.max_joint_error}"
-            )
-        if enabled.gripper and metrics.get("gripper_fail"):
-            last_reasons.append(
-                f"gripper_error={metrics['gripper_error']:.4f} > "
-                f"{tolerances['gripper'] if tolerances else config.thresholds.gripper_error}"
-            )
-        if enabled.ee_position and metrics.get("ee_pos_fail"):
-            last_reasons.append(
-                f"ee_position_error={metrics['ee_position_error']:.4f} > "
-                f"{tolerances['ee_position'] if tolerances else config.thresholds.ee_position_error}"
-            )
-        if enabled.ee_orientation and metrics.get("ee_ori_fail"):
-            last_reasons.append(
-                f"ee_orientation_error={metrics['ee_orientation_error']:.4f} > "
-                f"{tolerances['ee_orientation'] if tolerances else config.thresholds.ee_orientation_error}"
-            )
-        if last_reasons:
-            last_fail_reasons.append(f"{arm}: {', '.join(last_reasons)}")
+        last_reasons = _build_fail_reasons(
+            metrics, "", enabled_metrics, arm, arm_tolerances
+        )
+        last_fail_reasons.extend(last_reasons)
 
     first_frame = all(am.get("first_frame_home", True) for am in arm_results) if arm_results else True
     last_frame = all(am.get("last_frame_home", True) for am in arm_results) if arm_results else True
@@ -159,6 +87,41 @@ def check_episode(
     }
 
 
+def _build_fail_reasons(
+    metrics: dict,
+    prefix: str,
+    enabled: DetectionMetricsConfig,
+    arm: str,
+    tolerances: dict | None,
+) -> list[str]:
+    reasons: list[str] = []
+
+    if enabled.joint_positions and metrics.get(prefix + "joint_fail"):
+        tol_val = tolerances["joint_positions"] if tolerances else "?"
+        reasons.append(
+            f"joint_error={metrics[prefix + 'max_joint_error']:.4f} > {tol_val}"
+        )
+    if enabled.gripper and metrics.get(prefix + "gripper_fail"):
+        tol_val = tolerances["gripper"] if tolerances else "?"
+        reasons.append(
+            f"gripper_error={metrics[prefix + 'gripper_error']:.4f} > {tol_val}"
+        )
+    if enabled.ee_position and metrics.get(prefix + "ee_pos_fail"):
+        tol_val = tolerances["ee_position"] if tolerances else "?"
+        reasons.append(
+            f"ee_position_error={metrics[prefix + 'ee_position_error']:.4f} > {tol_val}"
+        )
+    if enabled.ee_orientation and metrics.get(prefix + "ee_ori_fail"):
+        tol_val = tolerances["ee_orientation"] if tolerances else "?"
+        reasons.append(
+            f"ee_orientation_error={metrics[prefix + 'ee_orientation_error']:.4f} > {tol_val}"
+        )
+
+    if reasons:
+        return [f"{arm}: {', '.join(reasons)}"]
+    return []
+
+
 def scan_episodes(
     root_dir: str | Path,
     config: Config,
@@ -168,7 +131,11 @@ def scan_episodes(
     if not root.exists():
         raise FileNotFoundError(f"Root directory not found: {root}")
 
+    loader = LoaderFactory.get_loader(config.robot_name)
     results: list[dict[str, Any]] = []
+
+    tolerances = config.tolerances
+    home_position = config.home_position
 
     for sub_dir in sorted(root.iterdir()):
         if not sub_dir.is_dir():
@@ -179,8 +146,15 @@ def scan_episodes(
             if not ep_dir.is_dir() or not ep_dir.name.startswith("episode"):
                 continue
             try:
-                episode = load_episode(ep_dir)
-                result = check_episode(episode, config, label=label)
+                episode = loader.load_episode(ep_dir)
+                result = check_episode(
+                    episode=episode,
+                    home_position=home_position,
+                    tolerances=tolerances,
+                    enabled_metrics=config.detection_metrics,
+                    fail_mode=config.fail_mode,
+                    label=label,
+                )
                 results.append(result)
             except Exception as e:
                 results.append(
@@ -194,6 +168,3 @@ def scan_episodes(
                 )
 
     return results
-
-
-

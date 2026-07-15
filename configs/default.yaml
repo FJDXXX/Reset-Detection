@@ -1,3 +1,6 @@
+robot: yuanli
+mode: calibrated
+
 data:
   raw_path: /mnt/public/dht/原力不合格数据
 
@@ -6,19 +9,9 @@ calibration:
   exclude_episodes:
     - episode_0021
     - episode_0025
-  tolerance_factor: 3.0
-
-arms:
-  - right_arm
-  - left_arm
 
 detection:
-  # fixed or calibrated
-  mode: calibrated
-  # any or all
   fail_mode: any
-  # enable/disable individual detection metrics
-
   metrics:
     joint_positions: false
     ee_position: true
