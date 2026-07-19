@@ -3,6 +3,7 @@ import argparse
 from src.config import load_config
 from src.detector import scan_episodes
 from src.exporter import export_results
+from src.loader_debug import run_loader_debug
 
 
 def main():
@@ -33,11 +34,39 @@ def main():
         metavar=("DIR_NAME", "LABEL"),
         help="Map a directory name to a display label (can be used multiple times)",
     )
+    parser.add_argument(
+        "--robot", "-r",
+        type=str,
+        default=None,
+        help="Robot name (overrides config file, e.g. yuanli, fold_towel)",
+    )
+    parser.add_argument(
+        "--debug-loader",
+        action="store_true",
+        help="Run loader validation instead of detection",
+    )
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Randomly sample N episodes for validation (default: all)",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     if args.data_path is not None:
         cfg.data_raw_path = args.data_path
+    if args.robot is not None:
+        cfg.robot_name = args.robot
+
+    if args.debug_loader:
+        run_loader_debug(
+            robot_name=cfg.robot_name,
+            data_path=cfg.data_raw_path,
+            sample_size=args.sample,
+            output_dir=args.output_dir,
+        )
+        return
 
     labels = {}
     if args.label:

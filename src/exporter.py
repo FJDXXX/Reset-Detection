@@ -8,112 +8,59 @@ from typing import Any
 from .config import Config
 
 
-AXIS_NAMES = ["X", "Y", "Z"]
-JOINT_NAMES = ["J1", "J2", "J3", "J4", "J5", "J6"]
-
-GRIPPER_OPEN_THRESHOLD = 0.5
+def _parameter_field(assessment_type: str) -> str:
+    return "first_frame_parameters" if assessment_type == "Initialization" else "parameters"
 
 
-def _assessment_prefix(assessment_type: str) -> str:
-    return "first_" if assessment_type == "Initialization" else ""
+def _is_failed(result: dict[str, Any], assessment_type: str) -> bool:
+    key = "first_frame" if assessment_type == "Initialization" else "last_frame"
+    return not result.get(key, True)
 
 
-def _gripper_issue_type(home_gripper: float) -> tuple[str, str]:
-    if home_gripper < GRIPPER_OPEN_THRESHOLD:
-        return "gripper_not_closed", "夹爪未完全闭合"
-    return "gripper_not_opened", "夹爪未完全打开"
-
-
-def _build_joint_issues(
-    arm_metric: dict[str, Any], arm: str, assessment_type: str,
+def build_parameter_issues(
+    arm_metric: dict[str, Any],
+    group: str,
+    assessment_type: str,
 ) -> list[dict[str, Any]]:
-    prefix = _assessment_prefix(assessment_type)
-    if not arm_metric.get(prefix + "joint_fail"):
-        return []
-    errors = arm_metric[prefix + "joint_errors"]
-    tols = arm_metric["per_joint_tolerances"]
-    issues = []
-    for i, (err, tol) in enumerate(zip(errors, tols)):
-        if err > tol:
-            issues.append({
-                "type": "joint_not_aligned",
-                "arm": arm,
-                "description": "机械臂关节未回到Home Position",
-                "details": {
-                    "joint": JOINT_NAMES[i],
-                    "error": round(err, 4),
-                    "tolerance": round(tol, 4),
-                    "excess": round(err - tol, 4),
-                },
-            })
+    issues: list[dict[str, Any]] = []
+
+    field = _parameter_field(assessment_type)
+    param_results = arm_metric.get(field, [])
+    for pr in param_results:
+        fail = pr.get("fail", False)
+        if not fail:
+            continue
+
+        err = pr.get("error")
+        tol = pr.get("tolerance")
+        ptype = pr.get("type")
+
+        details: dict[str, Any] = {}
+        if ptype == "vector" and isinstance(err, dict):
+            details["magnitude"] = round(err["magnitude"], 4)
+            details["dimensions"] = [round(e, 4) for e in err["dimensions"]]
+            details["tolerance"] = tol
+            details["excess_magnitude"] = round(err["magnitude"] - (max(tol) if isinstance(tol, list) else tol), 4)
+        elif ptype == "scalar":
+            details["error"] = round(err, 4)
+            details["tolerance"] = tol
+            details["excess"] = round(err - tol, 4)
+        elif ptype == "quaternion":
+            details["error"] = round(err, 4)
+            details["tolerance"] = tol
+            details["excess"] = round(err - tol, 4)
+
+        issues.append({
+            "parameter": pr["path"],
+            "group": group,
+            "key": pr["key"],
+            "type": ptype,
+            "home_value": pr.get("home_value"),
+            "current_value": pr.get("current_value"),
+            "details": details,
+        })
+
     return issues
-
-
-def _build_gripper_issue(
-    arm_metric: dict[str, Any], arm: str, assessment_type: str,
-) -> dict[str, Any] | None:
-    prefix = _assessment_prefix(assessment_type)
-    if not arm_metric.get(prefix + "gripper_fail"):
-        return None
-    issue_type, desc = _gripper_issue_type(arm_metric["home_gripper"])
-    return {
-        "type": issue_type,
-        "arm": arm,
-        "description": desc,
-        "details": {
-            "error": round(arm_metric[prefix + "gripper_error"], 4),
-            "tolerance": round(arm_metric["gripper_tolerance"], 4),
-            "excess": round(
-                arm_metric[prefix + "gripper_error"] - arm_metric["gripper_tolerance"], 4
-            ),
-        },
-    }
-
-
-def _build_ee_position_issues(
-    arm_metric: dict[str, Any], arm: str, assessment_type: str,
-) -> list[dict[str, Any]]:
-    prefix = _assessment_prefix(assessment_type)
-    if not arm_metric.get(prefix + "ee_pos_fail"):
-        return []
-    axis_errors = arm_metric[prefix + "ee_axis_errors"]
-    tols = arm_metric["per_axis_tolerances"]
-    issues = []
-    for i, err in enumerate(axis_errors):
-        if err > tols[i]:
-            issues.append({
-                "type": "ee_position_misaligned",
-                "arm": arm,
-                "description": "末端执行器位置未对齐",
-                "details": {
-                    "axis": AXIS_NAMES[i],
-                    "error": round(err, 4),
-                    "tolerance": round(tols[i], 4),
-                    "excess": round(err - tols[i], 4),
-                },
-            })
-    return issues
-
-
-def _build_ee_orientation_issue(
-    arm_metric: dict[str, Any], arm: str, assessment_type: str,
-) -> dict[str, Any] | None:
-    prefix = _assessment_prefix(assessment_type)
-    if not arm_metric.get(prefix + "ee_ori_fail"):
-        return None
-    return {
-        "type": "ee_orientation_misaligned",
-        "arm": arm,
-        "description": "末端执行器姿态未对齐",
-        "details": {
-            "error": round(arm_metric[prefix + "ee_orientation_error"], 4),
-            "tolerance": round(arm_metric["ee_orientation_tolerance"], 4),
-            "excess": round(
-                arm_metric[prefix + "ee_orientation_error"]
-                - arm_metric["ee_orientation_tolerance"], 4
-            ),
-        },
-    }
 
 
 def build_episode_issues(
@@ -122,27 +69,20 @@ def build_episode_issues(
     assessment_type: str = "Reset",
 ) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
-    enabled = config.detection_metrics
     for am in result.get("arm_metrics", []):
-        arm = am["arm"]
-        if enabled.joint_positions:
-            issues.extend(_build_joint_issues(am, arm, assessment_type))
-        if enabled.gripper:
-            gi = _build_gripper_issue(am, arm, assessment_type)
-            if gi:
-                issues.append(gi)
-        if enabled.ee_position:
-            issues.extend(_build_ee_position_issues(am, arm, assessment_type))
-        if enabled.ee_orientation:
-            oi = _build_ee_orientation_issue(am, arm, assessment_type)
-            if oi:
-                issues.append(oi)
+        group = am["group"]
+        issues.extend(build_parameter_issues(am, group, assessment_type))
     return issues
 
 
-def _is_failed(result: dict[str, Any], assessment_type: str) -> bool:
-    key = "first_frame" if assessment_type == "Initialization" else "last_frame"
-    return not result.get(key, True)
+def _collect_skipped(results: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for r in results:
+        for am in r.get("arm_metrics", []):
+            for pr in am.get("parameters", []):
+                if "fail" not in pr:
+                    continue
+    return counts
 
 
 def build_json_report(
@@ -168,19 +108,25 @@ def build_json_report(
             "result": "Not Home" if is_not_home else "Home",
         }
 
-        if is_not_home and issues:
+        if is_not_home:
+            if not issues:
+                raise RuntimeError(
+                    "Inconsistent detection result: "
+                    f"{Path(r['episode_path']).name} is Not Home but no failure reasons."
+                )
             entry["issues"] = issues
 
         episode_list.append(entry)
 
-    return {
+    enabled = {}
+    if config.enabled_parameters:
+        enabled = {"parameters": config.enabled_parameters}
+    elif config.robot_params:
+        enabled = {"parameters": [p.path for p in config.robot_params.params]}
+
+    report: dict[str, Any] = {
         "assessment_type": assessment_type,
-        "enabled_metrics": {
-            "joint_positions": config.detection_metrics.joint_positions,
-            "ee_position": config.detection_metrics.ee_position,
-            "ee_orientation": config.detection_metrics.ee_orientation,
-            "gripper": config.detection_metrics.gripper,
-        },
+        "enabled_parameters": enabled,
         "summary": {
             "total_episodes": len(results),
             "passed": passed,
@@ -189,54 +135,38 @@ def build_json_report(
         "episodes": episode_list,
     }
 
+    return report
+
 
 def _format_issue_title(issue: dict) -> str:
-    mapping = {
-        "joint_not_aligned": "Mechanical Arm Joint Not Aligned",
-        "gripper_not_closed": "Gripper Not Fully Closed",
-        "gripper_not_opened": "Gripper Not Fully Opened",
-        "ee_position_misaligned": "End Effector Position Misaligned",
-        "ee_orientation_misaligned": "End Effector Orientation Misaligned",
-    }
-    return mapping.get(issue["type"], issue["type"])
+    return f"Parameter Exceeded: {issue['parameter']}"
 
 
 def _format_issue_body(issue: dict) -> str:
     lines: list[str] = []
     d = issue["details"]
-    lines.append(f"  Arm:\n    {issue['arm']}")
-    lines.append(f"  Reason:")
+    ptype = issue["type"]
 
-    if issue["type"] == "joint_not_aligned":
-        lines.append(f"    Joint {d['joint']} exceeded tolerance")
-        lines.append(f"  Error:\n    {d['error']}")
-        lines.append(f"  Tolerance:\n    {d['tolerance']}")
-        lines.append(f"  Excess:\n    {d['excess']}")
-    elif issue["type"] in ("gripper_not_closed", "gripper_not_opened"):
-        lines.append(f"  Error:\n    {d['error']}")
-        lines.append(f"  Tolerance:\n    {d['tolerance']}")
-        lines.append(f"  Excess:\n    {d['excess']}")
-    elif issue["type"] == "ee_position_misaligned":
-        lines.append(f"    Axis {d['axis']} exceeded tolerance")
-        lines.append(f"  Error:\n    {d['error']}")
-        lines.append(f"  Tolerance:\n    {d['tolerance']}")
-        lines.append(f"  Excess:\n    {d['excess']}")
-    elif issue["type"] == "ee_orientation_misaligned":
-        lines.append(f"  Actual Orientation Error (rad):\n    {d['error']}")
-        lines.append(f"  Allowed Error (rad):\n    {d['tolerance']}")
-        lines.append(f"  Excess (rad):\n    {d['excess']}")
+    lines.append(f"  Group:\n    {issue['group']}")
+    lines.append(f"  Parameter:\n    {issue['parameter']}")
+    lines.append(f"  Type:\n    {ptype}")
+    lines.append(f"  Reason:\n    Exceeded tolerance")
+
+    if ptype == "vector":
+        lines.append(f"  Magnitude Error:\n    {d.get('magnitude', 'N/A')}")
+        lines.append(f"  Per-Dimension Errors:\n    {d.get('dimensions', 'N/A')}")
+        lines.append(f"  Tolerance:\n    {d.get('tolerance', 'N/A')}")
+        lines.append(f"  Excess Magnitude:\n    {d.get('excess_magnitude', 'N/A')}")
+    elif ptype == "scalar":
+        lines.append(f"  Error:\n    {d.get('error', 'N/A')}")
+        lines.append(f"  Tolerance:\n    {d.get('tolerance', 'N/A')}")
+        lines.append(f"  Excess:\n    {d.get('excess', 'N/A')}")
+    elif ptype == "quaternion":
+        lines.append(f"  Angular Error (rad):\n    {d.get('error', 'N/A')}")
+        lines.append(f"  Allowed Error (rad):\n    {d.get('tolerance', 'N/A')}")
+        lines.append(f"  Excess (rad):\n    {d.get('excess', 'N/A')}")
 
     return "\n".join(lines)
-
-
-def _count_issue_type(
-    results: list[dict], config: Config, issue_type: str, assessment_type: str,
-) -> int:
-    count = 0
-    for r in results:
-        issues = build_episode_issues(r, config, assessment_type)
-        count += sum(1 for i in issues if i["type"] == issue_type)
-    return count
 
 
 def build_txt_report(
@@ -268,13 +198,15 @@ def build_txt_report(
     lines.append(f"  {now_str}")
     lines.append("")
     lines.append("=" * 50)
-    lines.append("Enabled Detection Metrics")
+    lines.append("Enabled Parameters")
     lines.append("=" * 50)
     lines.append("")
-    enabled = config.detection_metrics
-    for name in ("joint_positions", "ee_position", "ee_orientation", "gripper"):
-        mark = "✓" if getattr(enabled, name) else "✗"
-        lines.append(f"  {mark} {name}")
+    if config.enabled_parameters:
+        for p in config.enabled_parameters:
+            lines.append(f"  ✓ {p}")
+    elif config.robot_params:
+        for p in config.robot_params.params:
+            lines.append(f"  ✓ {p.path}")
     lines.append("")
     lines.append(f"Total Episodes:")
     lines.append(f"  {len(results)}")
@@ -318,33 +250,16 @@ def build_txt_report(
     lines.append("=" * 50)
     lines.append("")
 
-    enabled = config.detection_metrics
+    param_failures: dict[str, int] = {}
+    for r in results:
+        issues = build_episode_issues(r, config, assessment_type)
+        for iss in issues:
+            p = iss["parameter"]
+            param_failures[p] = param_failures.get(p, 0) + 1
 
-    if enabled.joint_positions:
-        joint_count = _count_issue_type(results, config, "joint_not_aligned", assessment_type)
-        lines.append("Joint Alignment Failures:")
-        lines.append(f"  {joint_count}")
-        lines.append("")
-
-    if enabled.gripper:
-        gripper_closed = _count_issue_type(results, config, "gripper_not_closed", assessment_type)
-        gripper_opened = _count_issue_type(results, config, "gripper_not_opened", assessment_type)
-        gripper_count = gripper_closed + gripper_opened
-        lines.append("Gripper Failures:")
-        lines.append(f"  {gripper_count}")
-        lines.append("")
-
-    if enabled.ee_position:
-        ee_pos_count = _count_issue_type(results, config, "ee_position_misaligned", assessment_type)
-        lines.append("EE Position Failures:")
-        lines.append(f"  {ee_pos_count}")
-        lines.append("")
-
-    if enabled.ee_orientation:
-        ee_ori_count = _count_issue_type(results, config, "ee_orientation_misaligned", assessment_type)
-        lines.append("EE Orientation Failures:")
-        lines.append(f"  {ee_ori_count}")
-        lines.append("")
+    for p, cnt in sorted(param_failures.items()):
+        lines.append(f"  {p}: {cnt} failures")
+    lines.append("")
 
     return "\n".join(lines)
 
@@ -358,15 +273,6 @@ def build_stats_report(
     failed = 0
     by_label: dict[str, dict[str, int]] = {}
     issue_counts: dict[str, int] = {}
-    if config.detection_metrics.joint_positions:
-        issue_counts["joint_not_aligned"] = 0
-    if config.detection_metrics.gripper:
-        issue_counts["gripper_not_closed"] = 0
-        issue_counts["gripper_not_opened"] = 0
-    if config.detection_metrics.ee_position:
-        issue_counts["ee_position_misaligned"] = 0
-    if config.detection_metrics.ee_orientation:
-        issue_counts["ee_orientation_misaligned"] = 0
 
     for r in results:
         label = r.get("label", "")
@@ -387,9 +293,8 @@ def build_stats_report(
 
         issues = build_episode_issues(r, config, assessment_type)
         for iss in issues:
-            t = iss["type"]
-            if t in issue_counts:
-                issue_counts[t] += 1
+            p = iss["parameter"]
+            issue_counts[p] = issue_counts.get(p, 0) + 1
 
     return {
         "assessment_type": assessment_type,
@@ -407,7 +312,7 @@ def export_results(
     assessment_type: str = "Reset",
     output_dir: str | Path = "detection_summary",
 ) -> tuple[Path, Path, Path]:
-    output_dir = Path(output_dir) / assessment_type
+    output_dir = Path(output_dir) / config.robot_name / assessment_type
     output_dir.mkdir(parents=True, exist_ok=True)
 
     json_path = output_dir / "assessment_results.json"

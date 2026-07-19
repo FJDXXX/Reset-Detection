@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-from src.loader import Episode, ArmActionData, load_episode as _load_episode
+from src.loader import Episode, GroupData, load_episode as _load_episode
 from .base_loader import BaseLoader
-
 
 _STANDARD_FIELDS = {"joint_positions", "ee_positions", "gripper"}
 
@@ -16,7 +14,7 @@ _FIELD_ALIASES: dict[str, list[str]] = {
 }
 
 
-def normalize_frame(frame: dict[str, Any]) -> dict[str, Any]:
+def _normalize_frame(frame: dict) -> dict:
     result = dict(frame)
     for standard, aliases in _FIELD_ALIASES.items():
         if standard not in result:
@@ -24,22 +22,34 @@ def normalize_frame(frame: dict[str, Any]) -> dict[str, Any]:
                 if alias in result:
                     result[standard] = result[alias]
                     break
-    return result
+    return _split_ee_positions(result)
+
+
+def _split_ee_positions(frame: dict) -> dict:
+    if "ee_positions" not in frame:
+        return frame
+    val = frame["ee_positions"]
+    if len(val) == 7:
+        frame["ee_position"] = val[:3]
+        frame["ee_orientation"] = val[3:7]
+    else:
+        print(f"Warning: Unexpected ee_positions length: {len(val)}")
+    return frame
 
 
 class YuanliLoader(BaseLoader):
     def load_episode(self, episode_path: Path) -> Episode:
         episode = _load_episode(episode_path)
-        for arm_name in list(episode.arms.keys()):
-            arm = episode.arms[arm_name]
-            normalized = [normalize_frame(f) for f in arm.frames]
+        for group_name in list(episode.groups.keys()):
+            group = episode.groups[group_name]
+            normalized = [_normalize_frame(f) for f in group.frames]
             has_standard = any(k in normalized[0] for k in _STANDARD_FIELDS) if normalized else False
             if not has_standard:
-                del episode.arms[arm_name]
+                del episode.groups[group_name]
                 continue
-            episode.arms[arm_name] = ArmActionData(
-                arm_name=arm_name,
+            episode.groups[group_name] = GroupData(
+                group_name=group_name,
                 frames=normalized,
-                fps=arm.fps,
+                fps=group.fps,
             )
         return episode

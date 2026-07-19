@@ -7,8 +7,8 @@ from typing import Any
 
 
 @dataclass
-class ArmActionData:
-    arm_name: str
+class GroupData:
+    group_name: str
     frames: list[dict[str, Any]]
     fps: int
 
@@ -25,16 +25,19 @@ class ArmActionData:
 class Episode:
     path: Path
     meta: dict[str, Any]
-    arms: dict[str, ArmActionData] = field(default_factory=dict)
+    groups: dict[str, GroupData] = field(default_factory=dict)
 
-    def get_arms(self) -> list[str]:
-        return list(self.arms.keys())
+    def get_groups(self) -> list[str]:
+        return list(self.groups.keys())
 
-    def get_start_pose(self, arm: str) -> dict[str, Any]:
-        return self.arms[arm].start_pose
+    def get_samples(self, group: str) -> int:
+        return len(self.groups[group].frames)
 
-    def get_end_pose(self, arm: str) -> dict[str, Any]:
-        return self.arms[arm].end_pose
+    def get_start_pose(self, group: str) -> dict[str, Any]:
+        return self.groups[group].start_pose
+
+    def get_end_pose(self, group: str) -> dict[str, Any]:
+        return self.groups[group].end_pose
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -66,14 +69,14 @@ def load_episode(episode_path: str | Path) -> Episode:
     episode = Episode(path=episode_path, meta=meta)
 
     action_schemas: dict[str, Any] = meta.get("actions", {})
-    for arm_name, schema in action_schemas.items():
+    for group_name, schema in action_schemas.items():
         ext = schema.get("file_meta", {}).get("ext", "jsonl")
-        action_path = actions_dir / f"{arm_name}.{ext}"
+        action_path = actions_dir / f"{group_name}.{ext}"
         if not action_path.exists():
             continue
         frames = _read_jsonl(action_path)
-        episode.arms[arm_name] = ArmActionData(
-            arm_name=arm_name,
+        episode.groups[group_name] = GroupData(
+            group_name=group_name,
             frames=frames,
             fps=schema.get("fps", 0),
         )

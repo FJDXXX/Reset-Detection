@@ -1,0 +1,111 @@
+robot:
+  name: yuanli
+  parameters:
+    left_arm:
+      joint_positions:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_position:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_orientation:
+        type: quaternion
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+    right_arm:
+      joint_positions:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_position:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_orientation:
+        type: quaternion
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+
+home_position:
+  left_arm:
+    joint_positions:
+    - -0.8694887161254883
+    - -0.26569774746894836
+    - -0.0867009162902832
+    - 1.5323660373687744
+    - 0.3397887647151947
+    - -1.5578402280807495
+    ee_position:
+    - 0.1981883943080902
+    - -0.22991710901260376
+    - 0.1723204404115677
+    ee_orientation:
+    - -0.007636183438578881
+    - 0.0109340273272272
+    - -0.4154171057161476
+    - 0.9095332671361278
+    gripper: 0.0002924762270089963
+  right_arm:
+    joint_positions:
+    - 0.8718624114990234
+    - -0.2743021249771118
+    - -0.08517501503229141
+    - -1.543047308921814
+    - -0.33699125051498413
+    - 1.5739045143127441
+    ee_position:
+    - 0.19772523641586304
+    - 0.23127847909927368
+    - 0.1697114109992981
+    ee_orientation:
+    - 0.008015562281049216
+    - 0.016790311993538566
+    - 0.41729549059581594
+    - 0.908580381536425
+    gripper: 0.000181438832239817
+
+tolerances:
+  left_arm:
+    joint_positions:
+    - 0.06471270322799683
+    - 0.04803866520524025
+    - 0.019999999552965164
+    - 0.21630960702896118
+    - 0.04537755250930786
+    - 0.20712997019290924
+    ee_position:
+    - 0.019999999552965164
+    - 0.019999999552965164
+    - 0.025210212916135788
+    ee_orientation: 0.05
+    gripper: 0.001
+  right_arm:
+    joint_positions:
+    - 0.10348522663116455
+    - 0.04013296961784363
+    - 0.019999999552965164
+    - 0.285537451505661
+    - 0.0754225105047226
+    - 0.25708556175231934
+    ee_position:
+    - 0.019999999552965164
+    - 0.019999999552965164
+    - 0.019999999552965164
+    ee_orientation: 0.05
+    gripper: 0.001
+
+tolerance_floor:
+  joint_positions: 0.02
+  ee_position: 0.02
+  ee_orientation: 0.05
+  gripper: 0.001
