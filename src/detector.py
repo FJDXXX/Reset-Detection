@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .calibration import find_fold_towel_episode_dirs
+from .calibration import find_fold_towel_episode_dirs, find_kuavo_episode_files
 from .config import Config
 from .loaders.loader_factory import LoaderFactory
 from .loader import Episode
@@ -104,6 +104,31 @@ def scan_episodes(
 
     if config.robot_name == "fold_towel":
         episode_dirs = find_fold_towel_episode_dirs(root)
+        for ep_dir in episode_dirs:
+            try:
+                episode = loader.load_episode(ep_dir)
+                result = check_episode(
+                    episode=episode,
+                    home_position=home_position,
+                    tolerances=tolerances,
+                    robot_params=robot_params,
+                    enabled_parameters=config.enabled_parameters,
+                    fail_mode=config.fail_mode,
+                    label=ep_dir.name,
+                )
+                results.append(result)
+            except Exception as e:
+                results.append(
+                    {
+                        "episode_path": str(ep_dir),
+                        "label": ep_dir.name,
+                        "first_fail_reasons": [f"load_error: {e}"],
+                        "last_fail_reasons": [f"load_error: {e}"],
+                        "arm_metrics": [],
+                    }
+                )
+    elif config.robot_name == "kuavo":
+        episode_dirs = find_kuavo_episode_files(root)
         for ep_dir in episode_dirs:
             try:
                 episode = loader.load_episode(ep_dir)

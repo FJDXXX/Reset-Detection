@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .calibration import find_episode_dirs, find_fold_towel_episode_dirs
+from .calibration import find_episode_dirs, find_fold_towel_episode_dirs, find_kuavo_episode_files
 from .loader import Episode
 from .loaders.loader_factory import LoaderFactory
 from .parameters import RobotParameters
@@ -122,6 +122,8 @@ def run_loader_debug(
     loader = LoaderFactory.get_loader(robot_name)
     if robot_name == "fold_towel":
         all_dirs = find_fold_towel_episode_dirs(data_path)
+    elif robot_name == "kuavo":
+        all_dirs = find_kuavo_episode_files(data_path)
     else:
         all_dirs = find_episode_dirs(data_path)
 

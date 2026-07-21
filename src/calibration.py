@@ -24,6 +24,14 @@ def find_fold_towel_episode_dirs(root_dir: Path) -> list[Path]:
     return episodes
 
 
+def find_kuavo_episode_files(root_dir: Path) -> list[Path]:
+    episodes: list[Path] = []
+    for item in sorted(root_dir.iterdir()):
+        if item.is_file() and item.suffix == ".bag":
+            episodes.append(item)
+    return episodes
+
+
 def find_episode_dirs(root_dir: Path) -> list[Path]:
     episodes: list[Path] = []
     for item in sorted(root_dir.iterdir()):
@@ -77,6 +85,8 @@ def build_home_position(
     for group_name, group_params in robot_params.get_groups().items():
         home[group_name] = {}
         for param in group_params:
+            if not param.calibrate:
+                continue
             if param.path not in stats:
                 continue
             s = stats[param.path]
@@ -95,6 +105,8 @@ def build_tolerances(
     for group_name, group_params in robot_params.get_groups().items():
         tol[group_name] = {}
         for param in group_params:
+            if not param.calibrate:
+                continue
             if param.path not in stats:
                 continue
             s = stats[param.path]
@@ -162,6 +174,8 @@ def calibrate(
 
     if robot_name == "fold_towel":
         all_episode_dirs = find_fold_towel_episode_dirs(data_path)
+    elif robot_name == "kuavo":
+        all_episode_dirs = find_kuavo_episode_files(data_path)
     else:
         all_episode_dirs = find_episode_dirs(data_path)
     if not all_episode_dirs:
@@ -197,6 +211,8 @@ def calibrate(
     skipped: list[str] = []
 
     for param in robot_params.params:
+        if not param.calibrate:
+            continue
         values = collected[param.path]
         if not values:
             skipped.append(param.path)
@@ -209,6 +225,12 @@ def calibrate(
 
     result["home_position"] = build_home_position(stats, robot_params)
     result["tolerances"] = build_tolerances(stats, robot_params, tolerance_factor, tf)
+
+    tf_out: dict[str, float] = {}
+    for param in robot_params.params:
+        if param.calibrate:
+            tf_out[param.key] = tf.get(param.key, tf.get(param.param_type, 0.0))
+    result["tolerance_floor"] = tf_out
 
     if write_config:
         write_calibration_to_robot_config(config_path, robot_name, result)
@@ -232,6 +254,8 @@ def write_calibration_to_robot_config(
 
     raw["home_position"] = calibration_result["home_position"]
     raw["tolerances"] = calibration_result["tolerances"]
+    raw["tolerance_floor"] = calibration_result.get("tolerance_floor", {})
+    raw.pop("calibration", None)
 
     with open(robot_config_path, "w") as f:
         yaml.dump(raw, f, sort_keys=False, allow_unicode=True)
@@ -348,7 +372,7 @@ def main() -> None:
         data_path,
         robot_name=args.robot or cfg.robot_name,
         config_path=args.config,
-        tolerance_factor=args.tolerance_factor if args.tolerance_factor is not None else cfg.sigma_factor,
+        tolerance_factor=args.tolerance_factor if args.tolerance_factor is not None else cfg.tolerance_factor,
         write_config=not args.dry_run,
         exclude_episodes=cfg.calibration_exclude_episodes,
         tolerance_floor=tf,

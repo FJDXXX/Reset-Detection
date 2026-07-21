@@ -1,14 +1,11 @@
-robot: fold_towel
+robot: kuavo
 mode: calibrated
 fail_mode: any
 
 data:
-  raw_path: /mnt/public/dht/fold_towel
+  raw_path: /mnt/public/dht/effort_datasets/suboptical_datasets
 
 calibration:
-  data_path: /mnt/public/dht/fold_towel
-  exclude_episodes: [
-    # episode_0002, 
-    # episode_0005,
-    # fold_towel_gqy_0420@MASTER_SLAVE_MODE@2026_04_20_15_30_08
-    ]
+  data_path: /mnt/public/dht/effort_datasets/suboptical_datasets
+  exclude_episodes: [ ]
+  tolerance_factor: 3.0

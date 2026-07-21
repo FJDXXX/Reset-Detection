@@ -210,8 +210,17 @@ def compute_tolerance(
     floor_dict: dict[str, float] | None = None,
     param_key: str | None = None,
 ) -> Any:
+    _TYPE_FLOORS: dict[str, float] = {
+        "scalar": 0.001,
+        "vector": 0.02,
+        "quaternion": 0.05,
+    }
     floor_dict = floor_dict or {}
-    f = floor_dict.get(param_key, floor_dict.get(param_type, 0.0)) if param_key else floor_dict.get(param_type, 0.0)
+    f = (
+        floor_dict.get(param_key, floor_dict.get(param_type, _TYPE_FLOORS.get(param_type, 0.0)))
+        if param_key
+        else floor_dict.get(param_type, _TYPE_FLOORS.get(param_type, 0.0))
+    )
     if param_type == "scalar":
         raw = sigma_factor * stats["std"]
         return float(max(raw, f))
