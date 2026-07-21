@@ -54,7 +54,6 @@ robot:
         type: vector
         calibrate: true
         detect: true
-
 home_position:
   left_arm:
     joint_pos:
@@ -107,7 +106,6 @@ home_position:
     head_rotation:
     - -0.001313157845288515
     - -0.9982341527938843
-
 tolerances:
   left_arm:
     joint_pos:
@@ -151,16 +149,15 @@ tolerances:
     - 0.11540243029594421
     - 0.019999999552965164
     car_pose_rotation:
-    - 0.019999999552965164
-    - 0.019999999552965164
-    - 0.024456322193145752
+    - 0.05000000074505806
+    - 0.05000000074505806
+    - 0.05000000074505806
   lifting:
     lifting_mechanism_position: 0.001
   head:
     head_rotation:
-    - 0.019999999552965164
-    - 0.019999999552965164
-
+    - 0.05000000074505806
+    - 0.05000000074505806
 tolerance_floor:
   joint_pos: 0.02
   position: 0.02

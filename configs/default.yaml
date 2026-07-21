@@ -1,10 +1,14 @@
-robot: yuanli
+robot: fold_towel
 mode: calibrated
 fail_mode: any
 
 data:
-  raw_path: /mnt/public/dht/原力不合格数据
+  raw_path: /mnt/public/dht/fold_towel
 
 calibration:
-  data_path: /mnt/public/dht/原力不合格数据/二次夹取
-  exclude_episodes: []
+  data_path: /mnt/public/dht/fold_towel
+  exclude_episodes: [
+    # episode_0002, 
+    # episode_0005,
+    # fold_towel_gqy_0420@MASTER_SLAVE_MODE@2026_04_20_15_30_08
+    ]
