@@ -75,7 +75,7 @@ class QuantaX1Loader(BaseLoader):
         data_file = _find_data_file(episode_path)
         if data_file is None:
             raise FileNotFoundError(
-                f"No Quanta_x1 data file found in {episode_path}. "
+                f"No quanta_x1 data file found in {episode_path}. "
                 f"Expected a *.json file (excluding subtasks_*.json)"
             )
 

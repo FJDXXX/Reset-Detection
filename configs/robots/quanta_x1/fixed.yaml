@@ -1,5 +1,5 @@
 robot:
-  name: Quanta_x1
+  name: quanta_x1
   parameters:
     left_arm:
       joint_pos:

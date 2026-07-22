@@ -19,7 +19,7 @@ from .loaders.loader_factory import LoaderFactory
 def find_quanta_x1_episode_dirs(root_dir: Path) -> list[Path]:
     episodes: list[Path] = []
     for item in sorted(root_dir.iterdir()):
-        if item.is_dir() and "Quanta_x1" in item.name:
+        if item.is_dir():
             episodes.append(item)
     return episodes
 
@@ -172,7 +172,7 @@ def calibrate(
 
     exclude_set = set(exclude_episodes or [])
 
-    if robot_name == "Quanta_x1":
+    if robot_name == "quanta_x1":
         all_episode_dirs = find_quanta_x1_episode_dirs(data_path)
     elif robot_name == "kuavo":
         all_episode_dirs = find_kuavo_episode_files(data_path)

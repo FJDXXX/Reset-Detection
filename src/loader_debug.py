@@ -120,7 +120,7 @@ def run_loader_debug(
         return []
 
     loader = LoaderFactory.get_loader(robot_name)
-    if robot_name == "Quanta_x1":
+    if robot_name == "quanta_x1":
         all_dirs = find_quanta_x1_episode_dirs(data_path)
     elif robot_name == "kuavo":
         all_dirs = find_kuavo_episode_files(data_path)

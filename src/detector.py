@@ -102,7 +102,7 @@ def scan_episodes(
     home_position = config.home_position
     robot_params = config.robot_params
 
-    if config.robot_name == "Quanta_x1":
+    if config.robot_name == "quanta_x1":
         episode_dirs = find_quanta_x1_episode_dirs(root)
         for ep_dir in episode_dirs:
             try:

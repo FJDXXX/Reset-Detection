@@ -9,7 +9,7 @@ from .kuavo_loader import KuavoLoader
 class LoaderFactory:
     _registry: dict[str, type[BaseLoader]] = {
         "yuanli": YuanliLoader,
-        "Quanta_x1": QuantaX1Loader,
+        "quanta_x1": QuantaX1Loader,
         "kuavo": KuavoLoader,
     }
 

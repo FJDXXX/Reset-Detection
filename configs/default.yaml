@@ -1,4 +1,4 @@
-robot: Quanta_x1
+robot: quanta_x1
 mode: calibrated
 fail_mode: any
 

@@ -38,7 +38,7 @@ def main():
         "--robot", "-r",
         type=str,
         default=None,
-        help="Robot name (overrides config file, e.g. yuanli, Quanta_x1)",
+        help="Robot name (overrides config file, e.g. yuanli, quanta_x1)",
     )
     parser.add_argument(
         "--debug-loader",
