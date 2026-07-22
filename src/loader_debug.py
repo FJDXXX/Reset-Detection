@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .calibration import find_episode_dirs, find_fold_towel_episode_dirs, find_kuavo_episode_files
+from .calibration import find_episode_dirs, find_quanta_x1_episode_dirs, find_kuavo_episode_files
 from .loader import Episode
 from .loaders.loader_factory import LoaderFactory
 from .parameters import RobotParameters
@@ -30,7 +30,7 @@ class EpisodeValidation:
     groups: list[GroupValidation]
     errors: list[str]
     load_error: str | None = None
-    _fold_towel_sources: dict[str, Any] | None = None
+    _quanta_x1_sources: dict[str, Any] | None = None
 
     @property
     def all_passed(self) -> bool:
@@ -64,7 +64,7 @@ def validate_episode(
 ) -> EpisodeValidation:
     groups: list[GroupValidation] = []
     errors: list[str] = []
-    fold_towel_sources = episode.meta.get("_fold_towel_sources") if episode.meta else None
+    quanta_x1_sources = episode.meta.get("_quanta_x1_sources") if episode.meta else None
 
     if not episode.groups:
         errors.append("No groups detected in episode")
@@ -104,7 +104,7 @@ def validate_episode(
         loaded=True,
         groups=groups,
         errors=errors,
-        _fold_towel_sources=fold_towel_sources,
+        _quanta_x1_sources=quanta_x1_sources,
     )
 
 
@@ -120,8 +120,8 @@ def run_loader_debug(
         return []
 
     loader = LoaderFactory.get_loader(robot_name)
-    if robot_name == "fold_towel":
-        all_dirs = find_fold_towel_episode_dirs(data_path)
+    if robot_name == "Quanta_x1":
+        all_dirs = find_quanta_x1_episode_dirs(data_path)
     elif robot_name == "kuavo":
         all_dirs = find_kuavo_episode_files(data_path)
     else:
@@ -205,13 +205,13 @@ def _print_report(results: list[EpisodeValidation], robot: str) -> None:
             print()
             continue
 
-        fold_towel_sources = getattr(r, '_fold_towel_sources', None)
-        if fold_towel_sources:
+        quanta_x1_sources = getattr(r, '_quanta_x1_sources', None)
+        if quanta_x1_sources:
             print(f"Source Mapping:")
-            groups = fold_towel_sources.get("groups", [])
+            groups = quanta_x1_sources.get("groups", [])
             for g in groups:
                 print(f"  {g}")
-            ignored = fold_towel_sources.get("ignored_master", [])
+            ignored = quanta_x1_sources.get("ignored_master", [])
             if ignored:
                 for src in ignored:
                     print(f"  (skipped) {src}")
@@ -298,12 +298,12 @@ def _write_report(
             lines.append(f"  - {g.group}")
         lines.append("")
 
-        if r._fold_towel_sources:
+        if r._quanta_x1_sources:
             lines.append("Source Mapping:")
-            groups = r._fold_towel_sources.get("groups", [])
+            groups = r._quanta_x1_sources.get("groups", [])
             for g in groups:
                 lines.append(f"  {g}")
-            ignored = r._fold_towel_sources.get("ignored_master", [])
+            ignored = r._quanta_x1_sources.get("ignored_master", [])
             if ignored:
                 for src in ignored:
                     lines.append(f"  (skipped) {src}")

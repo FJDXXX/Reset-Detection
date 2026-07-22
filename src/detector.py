@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .calibration import find_fold_towel_episode_dirs, find_kuavo_episode_files
+from .calibration import find_quanta_x1_episode_dirs, find_kuavo_episode_files
 from .config import Config
 from .loaders.loader_factory import LoaderFactory
 from .loader import Episode
@@ -102,8 +102,8 @@ def scan_episodes(
     home_position = config.home_position
     robot_params = config.robot_params
 
-    if config.robot_name == "fold_towel":
-        episode_dirs = find_fold_towel_episode_dirs(root)
+    if config.robot_name == "Quanta_x1":
+        episode_dirs = find_quanta_x1_episode_dirs(root)
         for ep_dir in episode_dirs:
             try:
                 episode = loader.load_episode(ep_dir)

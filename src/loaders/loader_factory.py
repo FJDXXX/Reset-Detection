@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from .base_loader import BaseLoader
 from .yuanli_loader import YuanliLoader
-from .fold_towel_loader import FoldTowelLoader
+from .quanta_x1_loader import QuantaX1Loader
 from .kuavo_loader import KuavoLoader
 
 
 class LoaderFactory:
     _registry: dict[str, type[BaseLoader]] = {
         "yuanli": YuanliLoader,
-        "fold_towel": FoldTowelLoader,
+        "Quanta_x1": QuantaX1Loader,
         "kuavo": KuavoLoader,
     }
 

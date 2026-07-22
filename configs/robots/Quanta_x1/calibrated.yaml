@@ -1,5 +1,5 @@
 robot:
-  name: fold_towel
+  name: Quanta_x1
   parameters:
     left_arm:
       joint_pos:

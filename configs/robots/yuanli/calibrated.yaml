@@ -5,7 +5,7 @@ robot:
       joint_positions:
         type: vector
         calibrate: true
-        detect: true
+        detect: false
       ee_position:
         type: vector
         calibrate: true
@@ -22,7 +22,7 @@ robot:
       joint_positions:
         type: vector
         calibrate: true
-        detect: true
+        detect: false
       ee_position:
         type: vector
         calibrate: true
@@ -82,8 +82,8 @@ tolerances:
     - 0.054359227418899536
     - 0.24842801690101624
     ee_position:
-    - 0.019999999552965164
-    - 0.019999999552965164
+    - 0.013641612604260445
+    - 0.012463318184018135
     - 0.02268293872475624
     ee_orientation: 0.05
     gripper: 0.001
@@ -96,13 +96,13 @@ tolerances:
     - 0.8922831416130066
     - 3.7778728008270264
     ee_position:
-    - 0.019999999552965164
-    - 0.019999999552965164
-    - 0.019999999552965164
+    - 0.011722046881914139
+    - 0.010724510997533798
+    - 0.00937444157898426
     ee_orientation: 0.05
     gripper: 0.001
 tolerance_floor:
   joint_positions: 0.02
-  ee_position: 0.02
+  ee_position: 0.001
   ee_orientation: 0.05
   gripper: 0.001

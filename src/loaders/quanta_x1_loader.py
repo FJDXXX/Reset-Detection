@@ -8,7 +8,7 @@ from src.loader import Episode, GroupData
 from .base_loader import BaseLoader
 
 
-_EXCLUDED_JSON = {"subtasks_fold_towel.json", "subtasks_segmentation.json"}
+_EXCLUDED_JSON = {"subtasks_quanta_x1.json", "subtasks_segmentation.json"}
 
 _SOURCE_TO_GROUP: dict[str, str] = {
     "follow_left": "left_arm",
@@ -66,7 +66,7 @@ def _extract_group_frame(group_key: str, raw: dict[str, Any]) -> dict[str, Any]:
     return frame
 
 
-class FoldTowelLoader(BaseLoader):
+class QuantaX1Loader(BaseLoader):
     def load_episode(self, episode_path: Path) -> Episode:
         episode_path = Path(episode_path)
         if not episode_path.is_dir():
@@ -75,7 +75,7 @@ class FoldTowelLoader(BaseLoader):
         data_file = _find_data_file(episode_path)
         if data_file is None:
             raise FileNotFoundError(
-                f"No fold_towel data file found in {episode_path}. "
+                f"No Quanta_x1 data file found in {episode_path}. "
                 f"Expected a *.json file (excluding subtasks_*.json)"
             )
 
@@ -108,7 +108,7 @@ class FoldTowelLoader(BaseLoader):
                     found_master.add(mkey)
 
         meta: dict[str, Any] = {
-            "_fold_towel_sources": {
+            "_quanta_x1_sources": {
                 "groups": sorted(group_frames.keys()),
                 "ignored_master": sorted(found_master),
             }

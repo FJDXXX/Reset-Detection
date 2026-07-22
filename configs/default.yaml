@@ -1,11 +1,14 @@
-robot: kuavo
+robot: Quanta_x1
 mode: calibrated
 fail_mode: any
 
 data:
-  raw_path: /mnt/public/dht/effort_datasets/suboptical_datasets
+  raw_path: /mnt/public/dht/fold_towel
 
 calibration:
-  data_path: /mnt/public/dht/effort_datasets/suboptical_datasets
-  exclude_episodes: [ ]
+  data_path: /mnt/public/dht/fold_towel
+  exclude_episodes: [
+    # episode_0002,
+    # episode_0005
+   ]
   tolerance_factor: 3.0
