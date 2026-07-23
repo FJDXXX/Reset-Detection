@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .calibration import find_quanta_x1_episode_dirs, find_kuavo_episode_files
+from .calibration import find_episode_dirs, find_quanta_x1_episode_dirs, find_kuavo_episode_files
 from .config import Config
 from .loaders.loader_factory import LoaderFactory
 from .loader import Episode
@@ -153,35 +153,30 @@ def scan_episodes(
                     }
                 )
     else:
-        for sub_dir in sorted(root.iterdir()):
-            if not sub_dir.is_dir():
-                continue
-            label = (labels or {}).get(sub_dir.name, sub_dir.name)
-
-            for ep_dir in sorted(sub_dir.iterdir()):
-                if not ep_dir.is_dir() or not ep_dir.name.startswith("episode"):
-                    continue
-                try:
-                    episode = loader.load_episode(ep_dir)
-                    result = check_episode(
-                        episode=episode,
-                        home_position=home_position,
-                        tolerances=tolerances,
-                        robot_params=robot_params,
-                        enabled_parameters=config.enabled_parameters,
-                        fail_mode=config.fail_mode,
-                        label=label,
-                    )
-                    results.append(result)
-                except Exception as e:
-                    results.append(
-                        {
-                            "episode_path": str(ep_dir),
-                            "label": label,
-                            "first_fail_reasons": [f"load_error: {e}"],
-                            "last_fail_reasons": [f"load_error: {e}"],
-                            "arm_metrics": [],
-                        }
-                    )
+        all_episode_dirs = find_episode_dirs(root)
+        for ep_dir in all_episode_dirs:
+            label = (labels or {}).get(ep_dir.parent.name, ep_dir.parent.name)
+            try:
+                episode = loader.load_episode(ep_dir)
+                result = check_episode(
+                    episode=episode,
+                    home_position=home_position,
+                    tolerances=tolerances,
+                    robot_params=robot_params,
+                    enabled_parameters=config.enabled_parameters,
+                    fail_mode=config.fail_mode,
+                    label=label,
+                )
+                results.append(result)
+            except Exception as e:
+                results.append(
+                    {
+                        "episode_path": str(ep_dir),
+                        "label": label,
+                        "first_fail_reasons": [f"load_error: {e}"],
+                        "last_fail_reasons": [f"load_error: {e}"],
+                        "arm_metrics": [],
+                    }
+                )
 
     return results
