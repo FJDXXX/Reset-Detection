@@ -103,18 +103,18 @@ tolerances:
     - 0.737109899520874
     - 0.4122355580329895
     leg_joint_positions:
-    - 0.019999999552965164
-    - 0.019999999552965164
+    - 0.014776764437556267
+    - 0.019549217075109482
     - 0.033436503261327744
     - 0.033570896834135056
     - 0.031056437641382217
-    - 0.019999999552965164
-    - 0.019999999552965164
+    - 0.013892683200538158
+    - 0.016872065141797066
     - 0.020785197615623474
     - 0.0331648513674736
     - 0.033518821001052856
     - 0.03142235428094864
-    - 0.019999999552965164
+    - 0.014875935390591621
     leg_joint_torques:
     - 3.828301191329956
     - 0.9744668006896973
@@ -137,9 +137,9 @@ tolerances:
     - 0.20944660902023315
     - 0.003316866233944893
 tolerance_floor:
-  arm_joint_positions: 0.02
-  leg_joint_positions: 0.02
-  leg_joint_torques: 0.02
-  base_orientation: 0.05
-  gravity_vector: 0.02
-  gripper_joint_positions: 2.0e-05
+  arm_joint_positions: 0.0
+  leg_joint_positions: 0.0
+  leg_joint_torques: 0.0
+  base_orientation: 0.0
+  gravity_vector: 0.0
+  gripper_joint_positions: 0.0
