@@ -80,9 +80,10 @@ def main():
             results, cfg, assessment_type=assessment_type, output_dir=args.output_dir,
         )
         home_key = "first_frame" if assessment_type == "Initialization" else "last_frame"
-        success = sum(1 for r in results if r.get(home_key, True))
-        failed = len(results) - success
-        print(f"[{assessment_type}] Total: {len(results)} | Success: {success} | Failed: {failed}")
+        load_error = sum(1 for r in results if r.get("status") == "load_error")
+        success = sum(1 for r in results if r.get("status") != "load_error" and r.get(home_key, True))
+        failed = len(results) - success - load_error
+        print(f"[{assessment_type}] Total: {len(results)} | PASS: {success} | FAIL: {failed} | LOAD_ERROR: {load_error}")
         print(f"  JSON  -> {json_path}")
         print(f"  TXT   -> {txt_path}")
         print(f"  Stats -> {stats_path}")

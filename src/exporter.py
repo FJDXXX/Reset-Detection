@@ -12,9 +12,11 @@ def _parameter_field(assessment_type: str) -> str:
     return "first_frame_parameters" if assessment_type == "Initialization" else "parameters"
 
 
-def _is_failed(result: dict[str, Any], assessment_type: str) -> bool:
+def _classify_result(result: dict[str, Any], assessment_type: str) -> str:
+    if result.get("status") == "load_error":
+        return "load_error"
     key = "first_frame" if assessment_type == "Initialization" else "last_frame"
-    return not result.get(key, True)
+    return "fail" if not result.get(key, True) else "pass"
 
 
 def build_parameter_issues(
@@ -92,29 +94,31 @@ def build_json_report(
 ) -> dict[str, Any]:
     passed = 0
     failed = 0
+    load_error = 0
     episode_list: list[dict[str, Any]] = []
 
     for r in results:
-        issues = build_episode_issues(r, config, assessment_type)
-        is_not_home = _is_failed(r, assessment_type)
-
-        if is_not_home:
-            failed += 1
-        else:
-            passed += 1
-
+        status = _classify_result(r, assessment_type)
         entry: dict[str, Any] = {
             "episode": Path(r["episode_path"]).name,
-            "result": "Not Home" if is_not_home else "Home",
         }
 
-        if is_not_home:
+        if status == "load_error":
+            load_error += 1
+            entry["result"] = "Load Error"
+        elif status == "fail":
+            failed += 1
+            entry["result"] = "Not Home"
+            issues = build_episode_issues(r, config, assessment_type)
             if not issues:
                 raise RuntimeError(
                     "Inconsistent detection result: "
                     f"{Path(r['episode_path']).name} is Not Home but no failure reasons."
                 )
             entry["issues"] = issues
+        else:
+            passed += 1
+            entry["result"] = "Home"
 
         episode_list.append(entry)
 
@@ -131,6 +135,7 @@ def build_json_report(
             "total_episodes": len(results),
             "passed": passed,
             "failed": failed,
+            "load_error": load_error,
         },
         "episodes": episode_list,
     }
@@ -176,11 +181,21 @@ def build_txt_report(
 ) -> str:
     lines: list[str] = []
 
-    success_count = sum(1 for r in results if not _is_failed(r, assessment_type))
-    failed_count = len(results) - success_count
+    passed = 0
+    failed = 0
+    load_error = 0
+    for r in results:
+        status = _classify_result(r, assessment_type)
+        if status == "load_error":
+            load_error += 1
+        elif status == "fail":
+            failed += 1
+        else:
+            passed += 1
 
-    success_label = f"{assessment_type} Success"
-    failed_label = f"{assessment_type} Failed"
+    pass_label = f"{assessment_type} Pass"
+    fail_label = f"{assessment_type} Fail"
+    load_error_label = f"{assessment_type} Load Error"
 
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -211,11 +226,14 @@ def build_txt_report(
     lines.append(f"Total Episodes:")
     lines.append(f"  {len(results)}")
     lines.append("")
-    lines.append(f"{success_label}:")
-    lines.append(f"  {success_count}")
+    lines.append(f"{pass_label}:")
+    lines.append(f"  {passed}")
     lines.append("")
-    lines.append(f"{failed_label}:")
-    lines.append(f"  {failed_count}")
+    lines.append(f"{fail_label}:")
+    lines.append(f"  {failed}")
+    lines.append("")
+    lines.append(f"{load_error_label}:")
+    lines.append(f"  {load_error}")
     lines.append("")
     lines.append("=" * 50)
     lines.append("Failed Episodes")
@@ -223,7 +241,7 @@ def build_txt_report(
     lines.append("")
 
     for r in results:
-        if not _is_failed(r, assessment_type):
+        if _classify_result(r, assessment_type) != "fail":
             continue
         issues = build_episode_issues(r, config, assessment_type)
         ep_name = Path(r["episode_path"]).name
@@ -241,6 +259,28 @@ def build_txt_report(
             lines.append(_format_issue_body(iss))
             lines.append("")
 
+        lines.append("-" * 50)
+        lines.append("")
+
+    lines.append("=" * 50)
+    lines.append("Load Error Episodes")
+    lines.append("=" * 50)
+    lines.append("")
+
+    for r in results:
+        if _classify_result(r, assessment_type) != "load_error":
+            continue
+        ep_name = Path(r["episode_path"]).name
+
+        lines.append(f"Episode: {ep_name}")
+        lines.append("")
+        lines.append("Result: Load Error")
+        lines.append("")
+        lines.append("Errors:")
+        lines.append("")
+        for reason in r.get("first_fail_reasons", []):
+            lines.append(f"  {reason}")
+        lines.append("")
         lines.append("-" * 50)
         lines.append("")
 
@@ -271,22 +311,27 @@ def build_stats_report(
 ) -> dict[str, Any]:
     success = 0
     failed = 0
+    load_error = 0
     by_label: dict[str, dict[str, int]] = {}
     issue_counts: dict[str, int] = {}
 
     for r in results:
         label = r.get("label", "")
-        is_not_home = _is_failed(r, assessment_type)
+        status = _classify_result(r, assessment_type)
 
-        if is_not_home:
+        if status == "load_error":
+            load_error += 1
+        elif status == "fail":
             failed += 1
         else:
             success += 1
 
         if label not in by_label:
-            by_label[label] = {"total": 0, "success": 0, "failed": 0}
+            by_label[label] = {"total": 0, "success": 0, "failed": 0, "load_error": 0}
         by_label[label]["total"] += 1
-        if is_not_home:
+        if status == "load_error":
+            by_label[label]["load_error"] += 1
+        elif status == "fail":
             by_label[label]["failed"] += 1
         else:
             by_label[label]["success"] += 1
@@ -301,6 +346,7 @@ def build_stats_report(
         "total_episodes": len(results),
         "success": success,
         "failed": failed,
+        "load_error": load_error,
         "by_label": by_label,
         "issue_counts": issue_counts,
     }

@@ -125,6 +125,7 @@ def scan_episodes(
                         "first_fail_reasons": [f"load_error: {e}"],
                         "last_fail_reasons": [f"load_error: {e}"],
                         "arm_metrics": [],
+                        "status": "load_error",
                     }
                 )
     elif config.robot_name == "kuavo":
@@ -150,6 +151,7 @@ def scan_episodes(
                         "first_fail_reasons": [f"load_error: {e}"],
                         "last_fail_reasons": [f"load_error: {e}"],
                         "arm_metrics": [],
+                        "status": "load_error",
                     }
                 )
     else:
@@ -176,6 +178,7 @@ def scan_episodes(
                         "first_fail_reasons": [f"load_error: {e}"],
                         "last_fail_reasons": [f"load_error: {e}"],
                         "arm_metrics": [],
+                        "status": "load_error",
                     }
                 )
 
