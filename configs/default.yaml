@@ -3,10 +3,10 @@ mode: calibrated
 fail_mode: any
 
 data:
-  raw_path: /mnt/public/dht/fold_towel/.hidden_absolute_fail
+  raw_path: 
 
 calibration:
-  data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
+  data_path: 
   exclude_episodes: [
     # episode_0002,
     # episode_0005
