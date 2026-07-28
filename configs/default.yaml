@@ -1,9 +1,9 @@
-robot: quanta_x1
+robot: kuavo
 mode: calibrated
 fail_mode: any
 
 data:
-  raw_path: /mnt/public/dht/fold_towel
+  raw_path: /mnt/public/dht/fold_towel/.hidden_absolute_fail
 
 calibration:
   data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
