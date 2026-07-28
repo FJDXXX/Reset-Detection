@@ -3,132 +3,86 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
-
+from .calibration import find_episode_dirs, find_quanta_x1_episode_dirs, find_kuavo_episode_files
 from .config import Config
-from .loader import load_episode, Episode
+from .loaders.loader_factory import LoaderFactory
+from .loader import Episode
 from .metrics import compute_episode_metrics
 
 
-def _resolve_home_for_arm(config: Config, arm: str) -> tuple[dict | None, str | None]:
-    """Resolve home_pose and threshold_type for an arm.
+def _build_fail_reasons(param_results: list[dict[str, Any]]) -> list[str]:
+    reasons: list[str] = []
+    for pr in param_results:
+        if not pr.get("fail"):
+            continue
+        tol_val = pr.get("tolerance", "?")
+        err_val = pr.get("error")
+        ptype = pr.get("type")
 
-    Returns (home_pose, threshold_type) where threshold_type is
-    "tolerances" or "thresholds".
-    """
-    if config.detection_mode == "calibrated":
-        hp = config.home_position
-        if hp is None or arm not in hp:
-            raise ValueError(
-                f"calibrated mode requires home_position for '{arm}'. "
-                "Run calibration.py first."
-            )
-        if config.tolerances is None or arm not in config.tolerances:
-            raise ValueError(
-                f"calibrated mode requires tolerances for '{arm}'. "
-                "Run calibration.py first."
-            )
-        return hp[arm], "tolerances"
-
-    # fixed mode (or backward-compat fallback)
-    hp = config.fixed_home_position
-    if hp is not None and arm in hp:
-        return hp[arm], "thresholds"
-    if config.home_position is not None and arm in config.home_position:
-        return config.home_position[arm], "thresholds"
-    return None, "thresholds"
+        if ptype == "vector":
+            mag = err_val.get("magnitude", 0) if isinstance(err_val, dict) else 0
+            reasons.append(f"{pr['path']}: error_magnitude={mag:.4f} > {tol_val}")
+        elif ptype in ("scalar", "quaternion"):
+            reasons.append(f"{pr['path']}: error={err_val:.4f} > {tol_val}")
+    return reasons
 
 
 def check_episode(
     episode: Episode,
-    config: Config,
+    home_position: dict[str, dict] | None = None,
+    tolerances: dict[str, dict] | None = None,
+    robot_params=None,
+    enabled_parameters: list[str] | None = None,
+    fail_mode: str = "any",
     label: str = "",
 ) -> dict[str, Any]:
-    detection_mode = config.detection_mode
-    fail_mode = config.fail_mode
-    if detection_mode in ("any", "all"):
-        fail_mode = detection_mode
-        detection_mode = "fixed"
+    if robot_params is None:
+        return {
+            "episode_path": str(episode.path),
+            "label": label,
+            "first_fail_reasons": ["no_robot_params"],
+            "last_fail_reasons": ["no_robot_params"],
+            "arm_metrics": [],
+        }
 
-    arm_results: list[dict[str, Any]] = []
-    episode_passed = True
-    fail_reasons: list[str] = []
+    group_results: list[dict[str, Any]] = []
+    first_fail_reasons: list[str] = []
+    last_fail_reasons: list[str] = []
 
-    for arm in config.arms:
-        if arm not in episode.arms:
+    for group in episode.get_groups():
+        if group not in episode.groups:
             continue
-        if "joint_positions" not in episode.arms[arm].frames[0]:
+        if not robot_params.get_group(group):
             continue
-
-        home_pose, thresh_type = _resolve_home_for_arm(config, arm)
-        tolerances = None
-        thresholds = config.thresholds
-
-        if thresh_type == "tolerances":
-            tolerances = config.tolerances[arm]
-        elif thresholds is None:
-            raise ValueError(
-                f"fixed mode requires thresholds for '{arm}'. "
-                "Configure thresholds in config YAML."
-            )
 
         metrics = compute_episode_metrics(
-            episode, arm,
-            thresholds=thresholds,
-            home_pose=home_pose,
+            episode, group,
+            robot_params=robot_params,
+            home_position=home_position,
             tolerances=tolerances,
+            enabled_parameters=enabled_parameters,
         )
-        arm_results.append(metrics)
 
-        arm_passed = True
-        if fail_mode == "any":
-            if (
-                metrics.get("joint_fail")
-                or metrics.get("gripper_fail")
-                or metrics.get("ee_pos_fail")
-                or metrics.get("ee_ori_fail")
-            ):
-                arm_passed = False
-        else:
-            if (
-                metrics.get("joint_fail")
-                and metrics.get("gripper_fail")
-                and metrics.get("ee_pos_fail")
-                and metrics.get("ee_ori_fail")
-            ):
-                arm_passed = False
+        group_results.append(metrics)
 
-        if not arm_passed:
-            episode_passed = False
-            reasons = []
-            if metrics.get("joint_fail"):
-                reasons.append(
-                    f"joint_error={metrics['max_joint_error']:.4f} > "
-                    f"{tolerances['joint_positions'] if tolerances else config.thresholds.max_joint_error}"
-                )
-            if metrics.get("gripper_fail"):
-                reasons.append(
-                    f"gripper_error={metrics['gripper_error']:.4f} > "
-                    f"{tolerances['gripper'] if tolerances else config.thresholds.gripper_error}"
-                )
-            if metrics.get("ee_pos_fail"):
-                reasons.append(
-                    f"ee_position_error={metrics['ee_position_error']:.4f} > "
-                    f"{tolerances['ee_position'] if tolerances else config.thresholds.ee_position_error}"
-                )
-            if metrics.get("ee_ori_fail"):
-                reasons.append(
-                    f"ee_orientation_error={metrics['ee_orientation_error']:.4f} > "
-                    f"{tolerances['ee_orientation'] if tolerances else config.thresholds.ee_orientation_error}"
-                )
-            fail_reasons.append(f"{arm}: {', '.join(reasons)}")
+        last_fail_reasons.extend(
+            _build_fail_reasons(metrics.get("parameters", []))
+        )
+        first_fail_reasons.extend(
+            _build_fail_reasons(metrics.get("first_frame_parameters", []))
+        )
+
+    first_frame = all(gm.get("first_frame_home", True) for gm in group_results) if group_results else True
+    last_frame = all(gm.get("last_frame_home", True) for gm in group_results) if group_results else True
 
     return {
         "episode_path": str(episode.path),
         "label": label,
-        "passed": episode_passed,
-        "fail_reasons": fail_reasons,
-        "arm_metrics": arm_results,
+        "first_fail_reasons": first_fail_reasons,
+        "last_fail_reasons": last_fail_reasons,
+        "arm_metrics": group_results,
+        "first_frame": first_frame,
+        "last_frame": last_frame,
     }
 
 
@@ -141,52 +95,91 @@ def scan_episodes(
     if not root.exists():
         raise FileNotFoundError(f"Root directory not found: {root}")
 
+    loader = LoaderFactory.get_loader(config.robot_name)
     results: list[dict[str, Any]] = []
 
-    for sub_dir in sorted(root.iterdir()):
-        if not sub_dir.is_dir():
-            continue
-        label = (labels or {}).get(sub_dir.name, sub_dir.name)
+    tolerances = config.tolerances
+    home_position = config.home_position
+    robot_params = config.robot_params
 
-        for ep_dir in sorted(sub_dir.iterdir()):
-            if not ep_dir.is_dir() or not ep_dir.name.startswith("episode"):
-                continue
+    if config.robot_name == "quanta_x1":
+        episode_dirs = find_quanta_x1_episode_dirs(root)
+        for ep_dir in episode_dirs:
             try:
-                episode = load_episode(ep_dir)
-                result = check_episode(episode, config, label=label)
+                episode = loader.load_episode(ep_dir)
+                result = check_episode(
+                    episode=episode,
+                    home_position=home_position,
+                    tolerances=tolerances,
+                    robot_params=robot_params,
+                    enabled_parameters=config.enabled_parameters,
+                    fail_mode=config.fail_mode,
+                    label=ep_dir.name,
+                )
+                results.append(result)
+            except Exception as e:
+                results.append(
+                    {
+                        "episode_path": str(ep_dir),
+                        "label": ep_dir.name,
+                        "first_fail_reasons": [f"load_error: {e}"],
+                        "last_fail_reasons": [f"load_error: {e}"],
+                        "arm_metrics": [],
+                        "status": "load_error",
+                    }
+                )
+    elif config.robot_name == "kuavo":
+        episode_dirs = find_kuavo_episode_files(root)
+        for ep_dir in episode_dirs:
+            try:
+                episode = loader.load_episode(ep_dir)
+                result = check_episode(
+                    episode=episode,
+                    home_position=home_position,
+                    tolerances=tolerances,
+                    robot_params=robot_params,
+                    enabled_parameters=config.enabled_parameters,
+                    fail_mode=config.fail_mode,
+                    label=ep_dir.name,
+                )
+                results.append(result)
+            except Exception as e:
+                results.append(
+                    {
+                        "episode_path": str(ep_dir),
+                        "label": ep_dir.name,
+                        "first_fail_reasons": [f"load_error: {e}"],
+                        "last_fail_reasons": [f"load_error: {e}"],
+                        "arm_metrics": [],
+                        "status": "load_error",
+                    }
+                )
+    else:
+        all_episode_dirs = find_episode_dirs(root)
+        for ep_dir in all_episode_dirs:
+            label = (labels or {}).get(ep_dir.parent.name, ep_dir.parent.name)
+            try:
+                episode = loader.load_episode(ep_dir)
+                result = check_episode(
+                    episode=episode,
+                    home_position=home_position,
+                    tolerances=tolerances,
+                    robot_params=robot_params,
+                    enabled_parameters=config.enabled_parameters,
+                    fail_mode=config.fail_mode,
+                    label=label,
+                )
                 results.append(result)
             except Exception as e:
                 results.append(
                     {
                         "episode_path": str(ep_dir),
                         "label": label,
-                        "passed": False,
-                        "fail_reasons": [f"load_error: {e}"],
+                        "first_fail_reasons": [f"load_error: {e}"],
+                        "last_fail_reasons": [f"load_error: {e}"],
                         "arm_metrics": [],
+                        "status": "load_error",
                     }
                 )
 
     return results
-
-
-def results_to_dataframe(results: list[dict]) -> pd.DataFrame:
-    rows = []
-    for r in results:
-        row = {
-            "episode": Path(r["episode_path"]).name,
-            "episode_path": r["episode_path"],
-            "label": r["label"],
-            "passed": r["passed"],
-            "result_label": r.get("result_label", ""),
-            "fail_reasons": "; ".join(r["fail_reasons"]),
-        }
-        for am in r.get("arm_metrics", []):
-            arm = am["arm"]
-            row[f"{arm}_mje"] = am.get("max_joint_error")
-            row[f"{arm}_gripper_err"] = am.get("gripper_error")
-            row[f"{arm}_ee_pos_err"] = am.get("ee_position_error")
-            row[f"{arm}_ee_ori_err"] = am.get("ee_orientation_error")
-            row[f"{arm}_joint_fail"] = am.get("joint_fail")
-            row[f"{arm}_gripper_fail"] = am.get("gripper_fail")
-        rows.append(row)
-    return pd.DataFrame(rows)

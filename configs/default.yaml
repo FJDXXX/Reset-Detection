@@ -1,29 +1,14 @@
+robot: kuavo
+mode: calibrated
+fail_mode: any
+
 data:
-  raw_path: /mnt/public/dht/原力不合格数据
+  raw_path: /mnt/public/dht/fold_towel/.hidden_absolute_fail
 
 calibration:
-  data_path: /mnt/public/dht/原力不合格数据/二次夹取
-  exclude_episodes:
-    - episode_0021
-    - episode_0025
-  tolerance_floor:
-    gripper: 0.01
-    ee_position: 0.02
-    ee_orientation: 0.05
-
-arms:
-  - right_arm
-  - left_arm
-
-detection:
-  # fixed or calibrated
-  mode: calibrated
-  # any or all
-  fail_mode: any
-
-output:
-  labels:
-    - label
-    - episode
-    - passed
-    # - fail_reasons
+  data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
+  exclude_episodes: [
+    # episode_0002,
+    # episode_0005
+   ]
+  tolerance_factor: 3.0

@@ -1,3 +1,41 @@
+robot:
+  name: yuanli
+  parameters:
+    left_arm:
+      joint_positions:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_position:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_orientation:
+        type: quaternion
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+    right_arm:
+      joint_positions:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_position:
+        type: vector
+        calibrate: true
+        detect: true
+      ee_orientation:
+        type: quaternion
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+
 home_position:
   right_arm:
     joint_positions:
@@ -35,36 +73,15 @@ home_position:
     - -0.4154171049594879
     - 0.9095332622528076
     gripper: 0.00029247622645997947
-tolerance_floor:
-  gripper: 0.01
-  ee_position: 0.02
-  ee_orientation: 0.05
+
 tolerances:
   right_arm:
-    joint_positions:
-    - 0.10348522663116455
-    - 0.04013296961784363
-    - 0.0017892785836011171
-    - 0.285537451505661
-    - 0.0754225105047226
-    - 0.25708556175231934
-    ee_position:
-    - 0.019999999552965164
-    - 0.019999999552965164
-    - 0.019999999552965164
-    ee_orientation: 0.05
+    joint_positions: 0.15
+    ee_position: 0.05
+    ee_orientation: 0.1
     gripper: 0.01
   left_arm:
-    joint_positions:
-    - 0.06471270322799683
-    - 0.04803866520524025
-    - 0.010422732681035995
-    - 0.21630960702896118
-    - 0.04537755250930786
-    - 0.20712997019290924
-    ee_position:
-    - 0.019999999552965164
-    - 0.019999999552965164
-    - 0.025210212916135788
-    ee_orientation: 0.05
+    joint_positions: 0.15
+    ee_position: 0.05
+    ee_orientation: 0.1
     gripper: 0.01

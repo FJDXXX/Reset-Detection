@@ -1,0 +1,52 @@
+robot:
+  name: kuavo
+  parameters:
+    arm:
+      arm_joint_positions:
+        type: vector
+        calibrate: true
+        detect: true
+      leg_joint_positions:
+        type: vector
+        calibrate: true
+        detect: false
+      leg_joint_torques:
+        type: vector
+        calibrate: true
+        detect: false
+      base_orientation:
+        type: quaternion
+        calibrate: true
+        detect: true
+      gravity_vector:
+        type: vector
+        calibrate: true
+        detect: true
+      angular_velocity:
+        type: vector
+        calibrate: false
+        detect: true
+      gripper_joint_positions:
+        type: vector
+        calibrate: true
+        detect: false
+
+home_position:
+  arm:
+    arm_joint_positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    leg_joint_positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    leg_joint_torques: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    base_orientation: [1.0, 0.0, 0.0, 0.0]
+    gravity_vector: [0.0, 0.0, 9.81]
+    angular_velocity: [0.0, 0.0, 0.0]
+    gripper_joint_positions: [0.0, 0.0]
+
+tolerances:
+  arm:
+    arm_joint_positions: 0.1
+    leg_joint_positions: 0.02
+    leg_joint_torques: 2.0
+    base_orientation: 0.002
+    gravity_vector: 0.5
+    angular_velocity: 0.02
+    gripper_joint_positions: 0.001

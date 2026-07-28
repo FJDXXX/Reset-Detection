@@ -1,0 +1,127 @@
+robot:
+  name: quanta_x1
+  parameters:
+    left_arm:
+      joint_pos:
+        type: vector
+        calibrate: true
+        detect: false
+      position:
+        type: vector
+        calibrate: true
+        detect: true
+      rotation:
+        type: vector
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+    right_arm:
+      joint_pos:
+        type: vector
+        calibrate: true
+        detect: false
+      position:
+        type: vector
+        calibrate: true
+        detect: true
+      rotation:
+        type: vector
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+    base:
+      car_pose_position:
+        type: vector
+        calibrate: true
+        detect: true
+      car_pose_rotation:
+        type: vector
+        calibrate: true
+        detect: true
+    lifting:
+      lifting_mechanism_position:
+        type: scalar
+        calibrate: true
+        detect: true
+    head:
+      head_rotation:
+        type: vector
+        calibrate: true
+        detect: true
+
+home_position:
+  left_arm:
+    joint_pos:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    position:
+    - 0.2
+    - 0.0
+    - 0.5
+    rotation:
+    - 0.0
+    - 0.0
+    - 0.0
+    gripper: 0.0
+  right_arm:
+    joint_pos:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.0
+    position:
+    - 0.2
+    - 0.0
+    - 0.5
+    rotation:
+    - 0.0
+    - 0.0
+    - 0.0
+    gripper: 0.0
+  base:
+    car_pose_position:
+    - 0.0
+    - 0.0
+    - 0.0
+    car_pose_rotation:
+    - 0.0
+    - 0.0
+    - 0.0
+  lifting:
+    lifting_mechanism_position: 0.0
+  head:
+    head_rotation:
+    - 0.0
+    - 0.0
+    - 0.0
+
+tolerances:
+  left_arm:
+    joint_pos: 0.15
+    position: 0.05
+    rotation: 0.1
+    gripper: 0.01
+  right_arm:
+    joint_pos: 0.15
+    position: 0.05
+    rotation: 0.1
+    gripper: 0.01
+  base:
+    car_pose_position: 0.05
+    car_pose_rotation: 0.1
+  lifting:
+    lifting_mechanism_position: 0.01
+  head:
+    head_rotation: 0.1

@@ -1,12 +1,13 @@
 import argparse
-from pathlib import Path
 
 from src.config import load_config
-from src.detector import scan_episodes, results_to_dataframe
+from src.detector import scan_episodes
+from src.exporter import export_results
+from src.loader_debug import run_loader_debug
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Reset detection entry point")
+    parser = argparse.ArgumentParser(description="Home position detection entry point")
     parser.add_argument(
         "--data-path", "-d",
         type=str,
@@ -20,10 +21,10 @@ def main():
         help="Path to config YAML file",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output-dir", "-o",
         type=str,
-        default="results.csv",
-        help="Path to output CSV file",
+        default="detection_summary",
+        help="Path to output directory (default: detection_summary)",
     )
     parser.add_argument(
         "--label", "-l",
@@ -33,11 +34,39 @@ def main():
         metavar=("DIR_NAME", "LABEL"),
         help="Map a directory name to a display label (can be used multiple times)",
     )
+    parser.add_argument(
+        "--robot", "-r",
+        type=str,
+        default=None,
+        help="Robot name (overrides config file, e.g. yuanli, quanta_x1)",
+    )
+    parser.add_argument(
+        "--debug-loader",
+        action="store_true",
+        help="Run loader validation instead of detection",
+    )
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Randomly sample N episodes for validation (default: all)",
+    )
     args = parser.parse_args()
 
     cfg = load_config(args.config)
     if args.data_path is not None:
         cfg.data_raw_path = args.data_path
+    if args.robot is not None:
+        cfg.robot_name = args.robot
+
+    if args.debug_loader:
+        run_loader_debug(
+            robot_name=cfg.robot_name,
+            data_path=cfg.data_raw_path,
+            sample_size=args.sample,
+            output_dir=args.output_dir,
+        )
+        return
 
     labels = {}
     if args.label:
@@ -45,13 +74,19 @@ def main():
             labels[dir_name] = label
 
     results = scan_episodes(cfg.data_raw_path, cfg, labels=labels or None)
-    df = results_to_dataframe(results)
 
-    output_columns = cfg.output_labels or ["label", "episode", "passed", "fail_reasons"]
-    available = [c for c in output_columns if c in df.columns]
-    df[available].to_csv(args.output, index=False)
-    print(f"Results saved to {args.output}")
-    print(df[available].to_string(index=False))
+    for assessment_type in ("Initialization", "Reset"):
+        json_path, txt_path, stats_path = export_results(
+            results, cfg, assessment_type=assessment_type, output_dir=args.output_dir,
+        )
+        home_key = "first_frame" if assessment_type == "Initialization" else "last_frame"
+        load_error = sum(1 for r in results if r.get("status") == "load_error")
+        success = sum(1 for r in results if r.get("status") != "load_error" and r.get(home_key, True))
+        failed = len(results) - success - load_error
+        print(f"[{assessment_type}] Total: {len(results)} | PASS: {success} | FAIL: {failed} | LOAD_ERROR: {load_error}")
+        print(f"  JSON  -> {json_path}")
+        print(f"  TXT   -> {txt_path}")
+        print(f"  Stats -> {stats_path}")
 
 
 if __name__ == "__main__":

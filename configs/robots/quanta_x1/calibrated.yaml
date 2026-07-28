@@ -1,0 +1,169 @@
+robot:
+  name: quanta_x1
+  parameters:
+    left_arm:
+      joint_pos:
+        type: vector
+        calibrate: true
+        detect: false
+      position:
+        type: vector
+        calibrate: true
+        detect: true
+      rotation:
+        type: vector
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+    right_arm:
+      joint_pos:
+        type: vector
+        calibrate: true
+        detect: false
+      position:
+        type: vector
+        calibrate: true
+        detect: true
+      rotation:
+        type: vector
+        calibrate: true
+        detect: true
+      gripper:
+        type: scalar
+        calibrate: true
+        detect: true
+    base:
+      car_pose_position:
+        type: vector
+        calibrate: true
+        detect: true
+      car_pose_rotation:
+        type: vector
+        calibrate: true
+        detect: true
+    lifting:
+      lifting_mechanism_position:
+        type: scalar
+        calibrate: true
+        detect: true
+    head:
+      head_rotation:
+        type: vector
+        calibrate: true
+        detect: true
+home_position:
+  left_arm:
+    joint_pos:
+    - 0.07809320092201233
+    - 0.005361779592931271
+    - 0.04840248450636864
+    - -0.13861045241355896
+    - 0.15878522396087646
+    - 0.0024635738227516413
+    - -0.028597386553883553
+    position:
+    - -0.007010698318481445
+    - 0.002815249841660261
+    - 0.002762031741440296
+    rotation:
+    - -0.016279134899377823
+    - 0.09208958595991135
+    - -0.08214934170246124
+    gripper: -0.028593966789129708
+  right_arm:
+    joint_pos:
+    - 0.18900862336158752
+    - 0.0043275728821754456
+    - 0.02754243277013302
+    - -0.20481160283088684
+    - 0.08008156716823578
+    - 0.08478761464357376
+    - -0.0005548000335693359
+    position:
+    - -0.007658312562853098
+    - 0.01540503278374672
+    - -0.010580490343272686
+    rotation:
+    - 0.06959588825702667
+    - 0.1794956624507904
+    - 0.10741620510816574
+    gripper: -0.0005643330870144484
+  base:
+    car_pose_position:
+    - -0.0023266614880412817
+    - 0.02033563144505024
+    - 0.0
+    car_pose_rotation:
+    - 0.0
+    - 0.0
+    - 0.004882607609033585
+  lifting:
+    lifting_mechanism_position: 0.4699906650516722
+  head:
+    head_rotation:
+    - -0.001313157845288515
+    - -0.9982341527938843
+tolerances:
+  left_arm:
+    joint_pos:
+    - 0.1419527530670166
+    - 0.015603331848978996
+    - 0.09742516279220581
+    - 0.312347412109375
+    - 0.554806649684906
+    - 0.17962142825126648
+    - 0.0450274720788002
+    position:
+    - 0.01028710138052702
+    - 0.020770665258169174
+    - 0.011182419024407864
+    rotation:
+    - 0.18738695979118347
+    - 0.21282726526260376
+    - 0.5761126279830933
+    gripper: 0.045048346475067495
+  right_arm:
+    joint_pos:
+    - 0.26575949788093567
+    - 0.01764601841568947
+    - 0.08461019396781921
+    - 0.27574509382247925
+    - 0.3826497197151184
+    - 0.266563355922699
+    - 0.01815732941031456
+    position:
+    - 0.009873475879430771
+    - 0.022398462519049644
+    - 0.0140749616548419
+    rotation:
+    - 0.28038594126701355
+    - 0.20754775404930115
+    - 0.36731454730033875
+    gripper: 0.018175115733087697
+  base:
+    car_pose_position:
+    - 0.0483725368976593
+    - 0.11540243029594421
+    - 0.0
+    car_pose_rotation:
+    - 0.0
+    - 0.0
+    - 0.024456322193145752
+  lifting:
+    lifting_mechanism_position: 1.5056986145268156e-05
+  head:
+    head_rotation:
+    - 0.0015374536160379648
+    - 0.002379781100898981
+tolerance_floor:
+  joint_pos: 0.0
+  position: 0.0
+  rotation: 0.0
+  gripper: 0.0
+  car_pose_position: 0.0
+  car_pose_rotation: 0.0
+  lifting_mechanism_position: 0.0
+  head_rotation: 0.0
