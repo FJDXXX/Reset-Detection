@@ -3,10 +3,10 @@ mode: calibrated
 fail_mode: any
 
 data:
-  raw_path: 
+  raw_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
 
 calibration:
-  data_path: 
+  data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
   exclude_episodes: [
     # episode_0002,
     # episode_0005

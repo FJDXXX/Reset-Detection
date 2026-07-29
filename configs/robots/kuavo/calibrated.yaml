@@ -5,7 +5,7 @@ robot:
       arm_joint_positions:
         type: vector
         calibrate: true
-        detect: false
+        detect: true
       leg_joint_positions:
         type: vector
         calibrate: true

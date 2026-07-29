@@ -5,6 +5,7 @@ from typing import Any
 
 from .calibration import find_episode_dirs, find_quanta_x1_episode_dirs, find_kuavo_episode_files
 from .config import Config
+from .exporter import export_episode_result
 from .loaders.loader_factory import LoaderFactory
 from .loader import Episode
 from .metrics import compute_episode_metrics
@@ -90,10 +91,15 @@ def scan_episodes(
     root_dir: str | Path,
     config: Config,
     labels: dict[str, str] | None = None,
+    output_dir: str | Path = "detection_summary",
+    dataset_name: str | None = None,
 ) -> list[dict[str, Any]]:
     root = Path(root_dir)
     if not root.exists():
         raise FileNotFoundError(f"Root directory not found: {root}")
+
+    if dataset_name is None:
+        dataset_name = root.name
 
     loader = LoaderFactory.get_loader(config.robot_name)
     results: list[dict[str, Any]] = []
@@ -101,6 +107,14 @@ def scan_episodes(
     tolerances = config.tolerances
     home_position = config.home_position
     robot_params = config.robot_params
+
+    def _emit(result: dict[str, Any]) -> None:
+        for at in ("Initialization", "Reset"):
+            export_episode_result(
+                result, config, at,
+                dataset_name=dataset_name,
+                output_dir=output_dir,
+            )
 
     if config.robot_name == "quanta_x1":
         episode_dirs = find_quanta_x1_episode_dirs(root)
@@ -117,17 +131,18 @@ def scan_episodes(
                     label=ep_dir.name,
                 )
                 results.append(result)
+                _emit(result)
             except Exception as e:
-                results.append(
-                    {
-                        "episode_path": str(ep_dir),
-                        "label": ep_dir.name,
-                        "first_fail_reasons": [f"load_error: {e}"],
-                        "last_fail_reasons": [f"load_error: {e}"],
-                        "arm_metrics": [],
-                        "status": "load_error",
-                    }
-                )
+                err = {
+                    "episode_path": str(ep_dir),
+                    "label": ep_dir.name,
+                    "first_fail_reasons": [f"load_error: {e}"],
+                    "last_fail_reasons": [f"load_error: {e}"],
+                    "arm_metrics": [],
+                    "status": "load_error",
+                }
+                results.append(err)
+                _emit(err)
     elif config.robot_name == "kuavo":
         episode_dirs = find_kuavo_episode_files(root)
         for ep_dir in episode_dirs:
@@ -143,17 +158,18 @@ def scan_episodes(
                     label=ep_dir.name,
                 )
                 results.append(result)
+                _emit(result)
             except Exception as e:
-                results.append(
-                    {
-                        "episode_path": str(ep_dir),
-                        "label": ep_dir.name,
-                        "first_fail_reasons": [f"load_error: {e}"],
-                        "last_fail_reasons": [f"load_error: {e}"],
-                        "arm_metrics": [],
-                        "status": "load_error",
-                    }
-                )
+                err = {
+                    "episode_path": str(ep_dir),
+                    "label": ep_dir.name,
+                    "first_fail_reasons": [f"load_error: {e}"],
+                    "last_fail_reasons": [f"load_error: {e}"],
+                    "arm_metrics": [],
+                    "status": "load_error",
+                }
+                results.append(err)
+                _emit(err)
     else:
         all_episode_dirs = find_episode_dirs(root)
         for ep_dir in all_episode_dirs:
@@ -170,16 +186,17 @@ def scan_episodes(
                     label=label,
                 )
                 results.append(result)
+                _emit(result)
             except Exception as e:
-                results.append(
-                    {
-                        "episode_path": str(ep_dir),
-                        "label": label,
-                        "first_fail_reasons": [f"load_error: {e}"],
-                        "last_fail_reasons": [f"load_error: {e}"],
-                        "arm_metrics": [],
-                        "status": "load_error",
-                    }
-                )
+                err = {
+                    "episode_path": str(ep_dir),
+                    "label": label,
+                    "first_fail_reasons": [f"load_error: {e}"],
+                    "last_fail_reasons": [f"load_error: {e}"],
+                    "arm_metrics": [],
+                    "status": "load_error",
+                }
+                results.append(err)
+                _emit(err)
 
     return results

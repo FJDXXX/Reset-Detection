@@ -1,8 +1,8 @@
 import argparse
+from pathlib import Path
 
 from src.config import load_config
 from src.detector import scan_episodes
-from src.exporter import export_results
 from src.loader_debug import run_loader_debug
 
 
@@ -73,20 +73,23 @@ def main():
         for dir_name, label in args.label:
             labels[dir_name] = label
 
-    results = scan_episodes(cfg.data_raw_path, cfg, labels=labels or None)
+    dataset_name = Path(cfg.data_raw_path).name
+
+    results = scan_episodes(
+        cfg.data_raw_path, cfg,
+        labels=labels or None,
+        output_dir=args.output_dir,
+        dataset_name=dataset_name,
+    )
 
     for assessment_type in ("Initialization", "Reset"):
-        json_path, txt_path, stats_path = export_results(
-            results, cfg, assessment_type=assessment_type, output_dir=args.output_dir,
-        )
         home_key = "first_frame" if assessment_type == "Initialization" else "last_frame"
         load_error = sum(1 for r in results if r.get("status") == "load_error")
         success = sum(1 for r in results if r.get("status") != "load_error" and r.get(home_key, True))
         failed = len(results) - success - load_error
         print(f"[{assessment_type}] Total: {len(results)} | PASS: {success} | FAIL: {failed} | LOAD_ERROR: {load_error}")
-        print(f"  JSON  -> {json_path}")
-        print(f"  TXT   -> {txt_path}")
-        print(f"  Stats -> {stats_path}")
+        out_dir = Path(args.output_dir) / dataset_name / assessment_type
+        print(f"  Output -> {out_dir}")
 
 
 if __name__ == "__main__":
