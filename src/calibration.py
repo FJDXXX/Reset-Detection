@@ -229,7 +229,7 @@ def calibrate(
     tf_out: dict[str, float] = {}
     for param in robot_params.params:
         if param.calibrate:
-            tf_out[param.key] = tf.get(param.key, tf.get(param.param_type, 0.0))
+            tf_out[param.key] = tf.get(param.key, 0.0)
     result["tolerance_floor"] = tf_out
 
     if write_config:

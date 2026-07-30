@@ -220,4 +220,5 @@ __marimo__/
 data/
 tests/
 detection_summary/
+AGENTS.md
 results.csv
