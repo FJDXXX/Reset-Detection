@@ -18,7 +18,6 @@ class Config:
     robot_name: str = "yuanli"
     robot_params: RobotParameters | None = None
 
-    detection_mode: str = "fixed"
     fail_mode: str = "any"
     enabled_parameters: list[str] | None = None
 
@@ -43,10 +42,9 @@ class Config:
         base_dir = path.parent
 
         robot_name = raw.get("robot", "yuanli")
-        mode_name = raw.get("mode", "fixed")
 
         robot_config: dict = {}
-        robot_path = base_dir / "robots" / robot_name / f"{mode_name}.yaml"
+        robot_path = base_dir / "robots" / robot_name / "calibrated.yaml"
         if robot_path.exists():
             with open(robot_path) as f:
                 robot_config = yaml.safe_load(f) or {}
@@ -74,7 +72,6 @@ class Config:
         return cls(
             robot_name=robot_name,
             robot_params=robot_params,
-            detection_mode=mode_name,
             data_raw_path=raw.get("data", {}).get("raw_path", ""),
             calibration_data_path=raw.get("calibration", {}).get("data_path", ""),
             calibration_exclude_episodes=raw.get("calibration", {}).get("exclude_episodes", []),

@@ -128,7 +128,9 @@ def is_scalar_fail(error: float, tolerance: float) -> bool:
     return error > tolerance
 
 
-def is_vector_fail(error: dict[str, Any], tolerance: list[float]) -> bool:
+def is_vector_fail(error: dict[str, Any], tolerance: list[float] | float) -> bool:
+    if isinstance(tolerance, (int, float)):
+        return any(e > tolerance for e in error["dimensions"])
     return any(e > t for e, t in zip(error["dimensions"], tolerance))
 
 

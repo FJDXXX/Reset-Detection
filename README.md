@@ -4,12 +4,12 @@
 
 ## 1. 项目概述
 
-Reset Detection Framework 是一个参数驱动的机器人复位检测框架，用于检测机器人（双臂机械臂、移动底盘、灵巧手、头部等）在执行完任务后是否准确回到 Home Position（复位位置/零位）。
+Reset Detection Framework 是一个 Parameters base 的机器人复位检测框架，用于检测机器人（双臂机械臂、移动底盘、灵巧手、头部等）在执行完任务后是否准确回到 Home Position（复位位置/零位）。
 
 ### 解决的核心问题
 
 - 机器人执行完一个 Episode（任务回合）后，末端/关节/夹爪/底盘是否回到预定义的 Home Position
-- 支持两种检测模式：Initialization（初始化阶段首帧检测）与 Reset（任务结束后末帧检测）
+- 支持两种检测方向：Initialization（初始化阶段首帧检测）与 Reset（任务结束后末帧检测）
 - 支持多机器人异构数据源（yuanli、quanta_x1、kuavo）的统一加载、校准与检测
 - 通过参数定义驱动行为，新增机器人时无需修改核心检测逻辑
 - 输出标准化的 Episode-Level JSON Contract，便于下游评估系统集成
@@ -22,8 +22,7 @@ Reset Detection Framework 是一个参数驱动的机器人复位检测框架，
 | **Home Position（复位位置）** | 机器人完成任务后应返回的参考位姿，作为检测基准 |
 | **Initialization（初始化检测）** | 检测首帧——机器人在 Episode 开始时是否处于 Home Position |
 | **Reset（复位检测）** | 检测末帧——机器人在 Episode 结束后是否成功回到 Home Position |
-| **Calibrated Mode（校准模式）** | 从数据中自动统计计算 Home Position 和 Tolerance |
-| **Fixed Mode（固定模式）** | 手动在配置文件中指定 Home Position 和 Tolerance |
+| **Calibration（校准）** | 从数据中自动统计计算 Home Position 和 Tolerance，写入 calibrated.yaml |
 
 ### 三种检测状态
 
@@ -79,7 +78,7 @@ Loader（按机器人类型加载 Episode 数据 → Episode + GroupData 结构�
 
 | 模块 | 职责 |
 |---|---|
-| `config.py` | 加载合并三层配置文件（default.yaml + robot config + mode yaml） |
+| `config.py` | 加载合并配置文件（default.yaml + robot calibrated.yaml） |
 | `parameters.py` | `ParameterDef`、`RobotParameters`、误差计算、统计量计算、容差计算 |
 | `loader.py` | `Episode`、`GroupData` 基础数据结构、通用 JSONL 加载 |
 | `loaders/*` | 机器人特定数据加载器（Loader Factory 模式） |
@@ -133,18 +132,16 @@ class ParameterDef:
 ### 6.1 文件层级与合并规则
 
 ```
-configs/default.yaml        ← 全局入口，指定 robot、mode、data_path
+configs/default.yaml        ← 全局入口，指定 robot、data_path
          │
          └── robots/{robot}/
-                 ├── fixed.yaml         ← Fix 模式（预设 home/tolerance）
-                 └── calibrated.yaml    ← Calibrated 模式（校准生成）
+                 └── calibrated.yaml    ← 唯一机器人配置文件（校准生成或手工编辑）
 ```
 
 ### 6.2 全局配置 default.yaml
 
 ```yaml
 robot: kuavo               # 机器人标识
-mode: calibrated           # 模式：fixed 或 calibrated
 fail_mode: any             # 失败聚合方式
 
 data:
@@ -198,7 +195,7 @@ robot:
 |---|---|---|
 | yuanli | ee_position, ee_orientation, gripper | joint_positions |
 | quanta_x1 | position, rotation, gripper, car_pose, lifting, head | joint_pos |
-| kuavo | base_orientation, angular_velocity | arm/leg/leg_torque/gripper/gravity |
+| kuavo | base_orientation, left_dexhand_positions, right_dexhand_positions | arm/leg/leg_torque/gripper/gravity/angular_velocity |
 
 ---
 
@@ -364,6 +361,12 @@ class BaseLoader(ABC):
   - `gravity_vector[3]`
   - `angular_velocity[3]`
   - `gripper_joint_positions[2]`
+- 解析 `/dexhand/state` topic，提取：
+  - `left_dexhand_positions[6]`（左手灵巧手：thumb, thumb_aux, index, middle, ring, pinky）
+  - `right_dexhand_positions[6]`（右手灵巧手：thumb, thumb_aux, index, middle, ring, pinky）
+- `/dexhand/state` 与 `/sensors_data_raw` 按时间戳同步（Zero-Order Hold + 前向填充）
+- 若 bag 中包含 `/dexhand/state` topic 但消息为空，发出 `UserWarning`
+- 若 bag 中不包含 `/dexhand/state` topic，灵巧手字段不写入 frame（向后兼容）
 - 输出 Group：`arm`（单一 group，包含所有字段）
 
 ---
@@ -462,11 +465,13 @@ LoaderFactory.register("my_robot", MyRobotLoader)
 创建机器人配置文件：
 
 ```
-configs/robots/my_robot/fixed.yaml      # 固定模式配置
-configs/robots/my_robot/calibrated.yaml  # 校准模式配置（校准后自动生成）
+configs/robots/my_robot/calibrated.yaml
 ```
 
-配置中定义参数 Schema，指定 `type`、`calibrate`、`detect`。
+配置中定义参数 Schema，指定 `type`、`calibrate`、`detect`，以及 `home_position` 和 `tolerances`。
+
+- **自动校准**：运行 `python -m src.calibration` 自动生成 `home_position` 和 `tolerances`
+- **手工零位**：直接编辑 `calibrated.yaml` 中的 `home_position` 和 `tolerances`
 
 ### 12.4 新增参数类型
 
