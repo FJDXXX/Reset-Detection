@@ -21,15 +21,23 @@ robot:
       gravity_vector:
         type: vector
         calibrate: true
-        detect: true
+        detect: false
       angular_velocity:
         type: vector
         calibrate: false
-        detect: true
+        detect: false
       gripper_joint_positions:
         type: vector
         calibrate: true
         detect: false
+      left_dexhand_positions:
+        type: vector
+        calibrate: true
+        detect: true
+      right_dexhand_positions:
+        type: vector
+        calibrate: true
+        detect: true
 
 home_position:
   arm:
@@ -40,6 +48,8 @@ home_position:
     gravity_vector: [0.0, 0.0, 9.81]
     angular_velocity: [0.0, 0.0, 0.0]
     gripper_joint_positions: [0.0, 0.0]
+    left_dexhand_positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    right_dexhand_positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 tolerances:
   arm:
@@ -50,3 +60,5 @@ tolerances:
     gravity_vector: 0.5
     angular_velocity: 0.02
     gripper_joint_positions: 0.001
+    left_dexhand_positions: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    right_dexhand_positions: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]

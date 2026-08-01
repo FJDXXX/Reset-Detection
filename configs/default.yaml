@@ -1,9 +1,9 @@
-robot: kuavo
-mode: calibrated
+robot: yuanli
+mode: fixed
 fail_mode: any
 
 data:
-  raw_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
+  raw_path: /mnt/public/dht/原力不合格数据/二次夹取
 
 calibration:
   data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
