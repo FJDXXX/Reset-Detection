@@ -303,7 +303,7 @@ tolerance = max(sigma_factor * std, tolerance_floor)
 ### 9.1 输出路径
 
 ```
-detection_summary/{dataset_name}/{episode_name}_detection_output.json
+detection_summary/{dataset_name}_detection_output/{episode_name}_detection_output.json
 ```
 
 每个 Episode 产出一份 JSON，包含 Initialization 和 Reset 两个 Contract（JSON 数组），通过 `"name"` 字段区分。

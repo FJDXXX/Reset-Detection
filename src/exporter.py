@@ -148,7 +148,7 @@ def export_episode_result(
     result: dict[str, Any],
     config: Config,
     dataset_name: str,
-    output_dir: str | Path = "detection_summary",
+    output_dir: str | Path,
 ) -> Path:
     contracts = [
         _build_contract(result, "Initialization"),

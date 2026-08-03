@@ -1,7 +1,10 @@
-robot: quanta_x1
+robot: yuanli
+
+output:
+  dir: /mnt/public/dht/原力不合格数据/二次夹取
 
 data:
-  raw_path: /mnt/public/dht/fold_towel
+  raw_path: /mnt/public/dht/原力不合格数据/二次夹取
 
 calibration:
   data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets

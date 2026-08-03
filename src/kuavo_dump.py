@@ -117,7 +117,7 @@ def _build_statistics(
 
 def run_kuavo_dump(
     data_path: str | Path,
-    output_dir: str | Path = "kuavo_dump",
+    output_dir: str | Path,
 ) -> None:
     data_path = Path(data_path)
     if not data_path.exists():
@@ -185,8 +185,8 @@ def main() -> None:
     parser.add_argument(
         "--output-dir", "-o",
         type=str,
-        default="kuavo_dump",
-        help="Output directory (default: kuavo_dump)",
+        default="detection_summary/dumps",
+        help="Output directory (default: detection_summary/dumps)",
     )
     args = parser.parse_args()
     run_kuavo_dump(args.data_path, args.output_dir)

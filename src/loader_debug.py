@@ -111,8 +111,8 @@ def validate_episode(
 def run_loader_debug(
     robot_name: str,
     data_path: str | Path,
+    output_dir: str | Path,
     sample_size: int | None = None,
-    output_dir: str | Path = "detection_summary",
 ) -> list[EpisodeValidation]:
     data_path = Path(data_path)
     if not data_path.exists():

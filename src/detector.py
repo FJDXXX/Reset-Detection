@@ -94,16 +94,16 @@ def check_episode(
 def scan_episodes(
     root_dir: str | Path,
     config: Config,
-    labels: dict[str, str] | None = None,
-    output_dir: str | Path = "detection_summary",
+    output_dir: str | Path,
     dataset_name: str | None = None,
+    labels: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     root = Path(root_dir)
     if not root.exists():
         raise FileNotFoundError(f"Root directory not found: {root}")
 
     if dataset_name is None:
-        dataset_name = root.name
+        dataset_name = root.name + "_detection_output"
 
     loader = LoaderFactory.get_loader(config.robot_name)
     results: list[dict[str, Any]] = []

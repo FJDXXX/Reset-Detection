@@ -27,6 +27,7 @@ class Config:
     tolerance_factor: float = 3.0
     use_tolerance_floor: bool = True
 
+    output_dir: str = "detection_summary"
     output_labels: list[str] | None = None
 
     @classmethod
@@ -80,6 +81,7 @@ class Config:
             tolerance_floor=tolerance_floor,
             tolerance_factor=tolerance_factor,
             use_tolerance_floor=True,
+            output_dir=raw.get("output", {}).get("dir", "detection_summary"),
             output_labels=raw.get("output", {}).get("labels"),
         )
 

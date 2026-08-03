@@ -24,8 +24,8 @@ def main():
     parser.add_argument(
         "--output-dir", "-o",
         type=str,
-        default="detection_summary",
-        help="Path to output directory (default: detection_summary)",
+        default=None,
+        help="Path to output root directory (overrides config file)",
     )
     parser.add_argument(
         "--label", "-l",
@@ -65,19 +65,21 @@ def main():
     if args.robot is not None:
         cfg.robot_name = args.robot
 
+    output_dir = args.output_dir or cfg.output_dir
+
     if args.debug_loader:
         run_loader_debug(
             robot_name=cfg.robot_name,
             data_path=cfg.data_raw_path,
             sample_size=args.sample,
-            output_dir=args.output_dir,
+            output_dir=Path(output_dir) / "loader_debug",
         )
         return
 
     if args.kuavo_dump:
         run_kuavo_dump(
             data_path=cfg.data_raw_path,
-            output_dir=args.output_dir,
+            output_dir=Path(output_dir) / "dumps",
         )
         return
 
@@ -86,13 +88,13 @@ def main():
         for dir_name, label in args.label:
             labels[dir_name] = label
 
-    dataset_name = Path(cfg.data_raw_path).name
+    dataset_name = Path(cfg.data_raw_path).name + "_detection_output"
 
     results = scan_episodes(
         cfg.data_raw_path, cfg,
-        labels=labels or None,
-        output_dir=args.output_dir,
+        output_dir=output_dir,
         dataset_name=dataset_name,
+        labels=labels or None,
     )
 
     for assessment_type in ("Initialization", "Reset"):
@@ -101,7 +103,7 @@ def main():
         success = sum(1 for r in results if r.get("status") != "load_error" and r.get(home_key, True))
         failed = len(results) - success - load_error
         print(f"[{assessment_type}] Total: {len(results)} | PASS: {success} | FAIL: {failed} | LOAD_ERROR: {load_error}")
-    out_dir = Path(args.output_dir) / dataset_name
+    out_dir = Path(output_dir) / dataset_name
     print(f"Output -> {out_dir}")
 
 
