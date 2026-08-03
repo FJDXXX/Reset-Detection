@@ -101,8 +101,8 @@ def main():
         success = sum(1 for r in results if r.get("status") != "load_error" and r.get(home_key, True))
         failed = len(results) - success - load_error
         print(f"[{assessment_type}] Total: {len(results)} | PASS: {success} | FAIL: {failed} | LOAD_ERROR: {load_error}")
-        out_dir = Path(args.output_dir) / dataset_name / assessment_type
-        print(f"  Output -> {out_dir}")
+    out_dir = Path(args.output_dir) / dataset_name
+    print(f"Output -> {out_dir}")
 
 
 if __name__ == "__main__":

@@ -116,13 +116,10 @@ def build_episode_messages(
     return messages
 
 
-def export_episode_result(
+def _build_contract(
     result: dict[str, Any],
-    config: Config,
     assessment_type: str,
-    dataset_name: str,
-    output_dir: str | Path = "detection_summary",
-) -> Path:
+) -> dict[str, Any]:
     episode_status = _classify_result(result, assessment_type)
     passed = episode_status == "pass"
     score = 100.0 if passed else 0.0
@@ -133,7 +130,7 @@ def export_episode_result(
     elif episode_status == "fail":
         reasons = build_episode_messages(result, assessment_type)
 
-    contract = {
+    return {
         "module": "reset_detection",
         "name": assessment_type,
         "score": score,
@@ -146,11 +143,23 @@ def export_episode_result(
         "threshold_profile": {},
     }
 
+
+def export_episode_result(
+    result: dict[str, Any],
+    config: Config,
+    dataset_name: str,
+    output_dir: str | Path = "detection_summary",
+) -> Path:
+    contracts = [
+        _build_contract(result, "Initialization"),
+        _build_contract(result, "Reset"),
+    ]
+
     episode_name = Path(result["episode_path"]).name
-    out_path = Path(output_dir) / dataset_name / assessment_type / f"{episode_name}.json"
+    out_path = Path(output_dir) / dataset_name / f"{episode_name}_detection_output.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(contract, f, ensure_ascii=False, indent=2)
+        json.dump(contracts, f, ensure_ascii=False, indent=2)
 
     return out_path

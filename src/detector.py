@@ -114,12 +114,11 @@ def scan_episodes(
     robot_params = config.robot_params
 
     def _emit(result: dict[str, Any]) -> None:
-        for at in ("Initialization", "Reset"):
-            export_episode_result(
-                result, config, at,
-                dataset_name=dataset_name,
-                output_dir=output_dir,
-            )
+        export_episode_result(
+            result, config,
+            dataset_name=dataset_name,
+            output_dir=output_dir,
+        )
 
     if config.robot_name == "quanta_x1":
         episode_dirs = find_quanta_x1_episode_dirs(root)
