@@ -18,7 +18,6 @@ class Config:
     robot_name: str = "yuanli"
     robot_params: RobotParameters | None = None
 
-    fail_mode: str = "any"
     enabled_parameters: list[str] | None = None
 
     home_position: dict | None = None
@@ -75,7 +74,6 @@ class Config:
             data_raw_path=raw.get("data", {}).get("raw_path", ""),
             calibration_data_path=raw.get("calibration", {}).get("data_path", ""),
             calibration_exclude_episodes=raw.get("calibration", {}).get("exclude_episodes", []),
-            fail_mode=raw.get("fail_mode", "any"),
             enabled_parameters=enabled_params,
             home_position=home_position,
             tolerances=tolerances,

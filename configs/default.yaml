@@ -1,5 +1,4 @@
 robot: quanta_x1
-fail_mode: any
 
 data:
   raw_path: /mnt/public/dht/fold_towel

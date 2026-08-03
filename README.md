@@ -142,7 +142,6 @@ configs/default.yaml        ← 全局入口，指定 robot、data_path
 
 ```yaml
 robot: kuavo               # 机器人标识
-fail_mode: any             # 失败聚合方式
 
 data:
   raw_path: /path/to/datasets          # 检测数据路径
@@ -268,8 +267,8 @@ tolerance = max(sigma_factor * std, tolerance_floor)
       - 计算末帧误差 vs home_position
       - 检查误差是否超过 tolerance
       - 记录 fail_reasons
-   c. 聚合判定：first_frame_home / last_frame_home
-   d. 导出 Episode-Level JSON Contract（分别输出 Initialization 和 Reset 两份）
+   c. 聚合判定：任意 detect=true 参数超限 → FAIL；所有参数均在容差内 → PASS
+   d. 导出 Episode-Level JSON Contract
 ```
 
 ### 8.2 误差计算方法
@@ -304,10 +303,10 @@ tolerance = max(sigma_factor * std, tolerance_floor)
 ### 9.1 输出路径
 
 ```
-detection_summary/{dataset_name}/{Initialization|Reset}/{episode_name}.json
+detection_summary/{dataset_name}/{episode_name}_detection_output.json
 ```
 
-每个 Episode 产出两份 JSON，分别对应 Initialization 和 Reset 评估。
+每个 Episode 产出一份 JSON，包含 Initialization 和 Reset 两个 Contract（JSON 数组），通过 `"name"` 字段区分。
 
 ---
 

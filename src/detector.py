@@ -39,7 +39,6 @@ def check_episode(
     tolerances: dict[str, dict] | None = None,
     robot_params=None,
     enabled_parameters: list[str] | None = None,
-    fail_mode: str = "any",
     label: str = "",
 ) -> dict[str, Any]:
     if robot_params is None:
@@ -131,7 +130,6 @@ def scan_episodes(
                     tolerances=tolerances,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
-                    fail_mode=config.fail_mode,
                     label=ep_dir.name,
                 )
                 results.append(result)
@@ -158,7 +156,6 @@ def scan_episodes(
                     tolerances=tolerances,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
-                    fail_mode=config.fail_mode,
                     label=ep_dir.name,
                 )
                 results.append(result)
@@ -186,7 +183,6 @@ def scan_episodes(
                     tolerances=tolerances,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
-                    fail_mode=config.fail_mode,
                     label=label,
                 )
                 results.append(result)
