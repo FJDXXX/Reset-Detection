@@ -3,6 +3,7 @@ from pathlib import Path
 
 from src.config import load_config
 from src.detector import scan_episodes
+from src.kuavo_dump import run_kuavo_dump
 from src.loader_debug import run_loader_debug
 
 
@@ -46,6 +47,11 @@ def main():
         help="Run loader validation instead of detection",
     )
     parser.add_argument(
+        "--kuavo-dump",
+        action="store_true",
+        help="Run Kuavo calibration data dump",
+    )
+    parser.add_argument(
         "--sample",
         type=int,
         default=None,
@@ -64,6 +70,13 @@ def main():
             robot_name=cfg.robot_name,
             data_path=cfg.data_raw_path,
             sample_size=args.sample,
+            output_dir=args.output_dir,
+        )
+        return
+
+    if args.kuavo_dump:
+        run_kuavo_dump(
+            data_path=cfg.data_raw_path,
             output_dir=args.output_dir,
         )
         return
