@@ -5,10 +5,23 @@ from typing import Any
 
 from .calibration import find_episode_dirs, find_quanta_x1_episode_dirs, find_kuavo_episode_files
 from .config import Config
-from .exporter import export_episode_result
+from .exporter import _PATH_MESSAGE_MAP, _kuavo_arm_split, export_episode_result
 from .loaders.loader_factory import LoaderFactory
 from .loader import Episode
 from .metrics import compute_episode_metrics
+
+
+def _path_to_messages(pr: dict[str, Any]) -> list[str]:
+    path = pr.get("path", "")
+
+    if path == "arm.arm_joint_positions":
+        return _kuavo_arm_split(pr)
+
+    msg = _PATH_MESSAGE_MAP.get(path)
+    if msg:
+        return [msg]
+
+    return [path]
 
 
 def _build_fail_reasons(param_results: list[dict[str, Any]]) -> list[str]:
@@ -16,15 +29,7 @@ def _build_fail_reasons(param_results: list[dict[str, Any]]) -> list[str]:
     for pr in param_results:
         if not pr.get("fail"):
             continue
-        tol_val = pr.get("tolerance", "?")
-        err_val = pr.get("error")
-        ptype = pr.get("type")
-
-        if ptype == "vector":
-            mag = err_val.get("magnitude", 0) if isinstance(err_val, dict) else 0
-            reasons.append(f"{pr['path']}: error_magnitude={mag:.4f} > {tol_val}")
-        elif ptype in ("scalar", "quaternion"):
-            reasons.append(f"{pr['path']}: error={err_val:.4f} > {tol_val}")
+        reasons.extend(_path_to_messages(pr))
     return reasons
 
 

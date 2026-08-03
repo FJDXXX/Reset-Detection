@@ -1,8 +1,8 @@
-robot: kuavo
+robot: yuanli
 fail_mode: any
 
 data:
-  raw_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
+  raw_path: /mnt/public/dht/原力不合格数据/爪夹未闭合（复位不好）
 
 calibration:
   data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets

@@ -7,6 +7,36 @@ from typing import Any
 from .config import Config
 
 
+_PATH_MESSAGE_MAP: dict[str, str] = {
+    "left_arm.ee_position": "左臂末端位置未回到初始位置",
+    "left_arm.ee_orientation": "左臂末端姿态未回到初始姿态",
+    "left_arm.gripper": "左臂夹爪未回到初始状态",
+    "left_arm.joint_positions": "左臂关节未回到初始状态",
+    "left_arm.position": "左臂末端位置未回到初始位置",
+    "left_arm.rotation": "左臂末端姿态未回到初始姿态",
+    "left_arm.joint_pos": "左臂关节未回到初始状态",
+    "right_arm.ee_position": "右臂末端位置未回到初始位置",
+    "right_arm.ee_orientation": "右臂末端姿态未回到初始姿态",
+    "right_arm.gripper": "右臂夹爪未回到初始状态",
+    "right_arm.joint_positions": "右臂关节未回到初始状态",
+    "right_arm.position": "右臂末端位置未回到初始位置",
+    "right_arm.rotation": "右臂末端姿态未回到初始姿态",
+    "right_arm.joint_pos": "右臂关节未回到初始状态",
+    "base.car_pose_position": "移动底盘未回到初始状态",
+    "base.car_pose_rotation": "移动底盘未回到初始状态",
+    "lifting.lifting_mechanism_position": "升降机构未回到初始高度",
+    "head.head_rotation": "头部未回到初始姿态",
+    "arm.base_orientation": "机器人基座姿态未回到初始姿态",
+    "arm.left_dexhand_positions": "左手灵巧手未回到初始状态",
+    "arm.right_dexhand_positions": "右手灵巧手未回到初始状态",
+    "arm.leg_joint_positions": "机器人腿部关节未回到初始状态",
+    "arm.leg_joint_torques": "机器人腿部关节扭矩未回到初始状态",
+    "arm.gravity_vector": "重力向量未回到初始状态",
+    "arm.angular_velocity": "角速度未回到初始状态",
+    "arm.gripper_joint_positions": "夹爪未回到初始状态",
+}
+
+
 def _parameter_field(assessment_type: str) -> str:
     return "first_frame_parameters" if assessment_type == "Initialization" else "parameters"
 
@@ -18,64 +48,72 @@ def _classify_result(result: dict[str, Any], assessment_type: str) -> str:
     return "fail" if not result.get(key, True) else "pass"
 
 
-def _build_issue_details(pr: dict[str, Any]) -> dict[str, Any]:
+def _kuavo_arm_split(
+    pr: dict[str, Any],
+) -> list[str]:
     err = pr.get("error")
     tol = pr.get("tolerance")
-    ptype = pr.get("type")
+    messages: list[str] = []
 
-    details: dict[str, Any] = {}
-    if ptype == "vector" and isinstance(err, dict):
-        details["magnitude"] = round(err["magnitude"], 4)
-        details["dimensions"] = [round(e, 4) for e in err["dimensions"]]
-        details["tolerance"] = tol
-        details["excess_magnitude"] = round(
-            err["magnitude"] - (max(tol) if isinstance(tol, list) else tol), 4
-        )
-    elif ptype == "scalar":
-        details["error"] = round(err, 4)
-        details["tolerance"] = tol
-        details["excess"] = round(err - tol, 4)
-    elif ptype == "quaternion":
-        details["error"] = round(err, 4)
-        details["tolerance"] = tol
-        details["excess"] = round(err - tol, 4)
+    if not isinstance(err, dict) or "dimensions" not in err:
+        messages.append("左臂关节未回到初始状态")
+        messages.append("右臂关节未回到初始状态")
+        return messages
 
-    return details
+    dims = err["dimensions"]
+    if isinstance(tol, list) and len(tol) == len(dims):
+        left_fail = any(d > t for d, t in zip(dims[:7], tol[:7]))
+        right_fail = any(d > t for d, t in zip(dims[7:14], tol[7:14]))
+    else:
+        tol_val = tol if isinstance(tol, (int, float)) else 0
+        left_fail = any(d > tol_val for d in dims[:7])
+        right_fail = any(d > tol_val for d in dims[7:14])
+
+    if left_fail:
+        messages.append("左臂关节未回到初始状态")
+    if right_fail:
+        messages.append("右臂关节未回到初始状态")
+
+    return messages
 
 
-def build_parameter_issues(
+def _path_to_messages(pr: dict[str, Any]) -> list[str]:
+    path = pr.get("path", "")
+
+    if path == "arm.arm_joint_positions":
+        return _kuavo_arm_split(pr)
+
+    msg = _PATH_MESSAGE_MAP.get(path)
+    if msg:
+        return [msg]
+
+    return [path]
+
+
+def build_parameter_messages(
     arm_metric: dict[str, Any],
-    group: str,
     assessment_type: str,
-) -> list[dict[str, Any]]:
-    issues: list[dict[str, Any]] = []
+) -> list[str]:
+    messages: list[str] = []
 
     field = _parameter_field(assessment_type)
     param_results = arm_metric.get(field, [])
     for pr in param_results:
-        fail = pr.get("fail", False)
-        if not fail:
+        if not pr.get("fail", False):
             continue
+        messages.extend(_path_to_messages(pr))
 
-        issues.append({
-            "parameter": pr["path"],
-            "type": pr["type"],
-            "details": _build_issue_details(pr),
-        })
-
-    return issues
+    return messages
 
 
-def build_episode_issues(
+def build_episode_messages(
     result: dict[str, Any],
-    config: Config,
     assessment_type: str = "Reset",
-) -> list[dict[str, Any]]:
-    issues: list[dict[str, Any]] = []
+) -> list[str]:
+    messages: list[str] = []
     for am in result.get("arm_metrics", []):
-        group = am["group"]
-        issues.extend(build_parameter_issues(am, group, assessment_type))
-    return issues
+        messages.extend(build_parameter_messages(am, assessment_type))
+    return messages
 
 
 def export_episode_result(
@@ -89,26 +127,11 @@ def export_episode_result(
     passed = episode_status == "pass"
     score = 100.0 if passed else 0.0
 
-    reasons: list[dict[str, Any]] = []
+    reasons: list[str] = []
     if episode_status == "load_error":
-        error_msgs = (
-            result.get("first_fail_reasons", [])
-            or result.get("last_fail_reasons", [])
-        )
-        details = "; ".join(error_msgs) if error_msgs else "Unknown load error"
-        reasons.append({
-            "parameter": "load_error",
-            "type": "system",
-            "details": details,
-        })
+        reasons.append("Episode数据加载失败")
     elif episode_status == "fail":
-        issues = build_episode_issues(result, config, assessment_type)
-        for iss in issues:
-            reasons.append({
-                "parameter": iss["parameter"],
-                "type": iss["type"],
-                "details": iss["details"],
-            })
+        reasons = build_episode_messages(result, assessment_type)
 
     contract = {
         "module": "reset_detection",
