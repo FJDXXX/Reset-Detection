@@ -117,7 +117,8 @@ def _extract_bag(
                 imu = d.imu_data
                 frame = {
                     "leg_joint_positions": list(jd.joint_q[0:12]),
-                    "arm_joint_positions": list(jd.joint_q[12:26]),
+                    "left_arm_joint_positions": list(jd.joint_q[12:19]),
+                    "right_arm_joint_positions": list(jd.joint_q[19:26]),
                     "gripper_joint_positions": list(jd.joint_q[26:28]),
                     "leg_joint_torques": list(jd.joint_torque[0:12]),
                     "base_orientation": [

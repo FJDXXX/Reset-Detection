@@ -21,11 +21,10 @@ class Config:
     enabled_parameters: list[str] | None = None
 
     home_position: dict | None = None
-    tolerances: dict | None = None
-    tolerance_floor: dict | None = None
-
-    tolerance_factor: float = 3.0
-    use_tolerance_floor: bool = True
+    tolerance1: dict | None = None
+    tolerance2: dict | None = None
+    tolerance1_factor: float = 3.0
+    tolerance2_factor: float = 6.0
 
     output_dir: str = "detection_summary"
     output_labels: list[str] | None = None
@@ -55,19 +54,17 @@ class Config:
         robot_params = RobotParameters.from_config(robot_config)
 
         home_position = robot_config.get("home_position")
-        tolerances = robot_config.get("tolerances")
-
-        tolerance_floor: dict[str, float] = {}
-        robot_floor = robot_config.get("tolerance_floor", {})
-        tolerance_floor.update(robot_floor)
-        tolerance_floor = tolerance_floor or None
+        tolerance1 = robot_config.get("tolerance1")
+        tolerance2 = robot_config.get("tolerance2")
 
         enabled_params = robot_params.get_detect_enabled() if robot_params else None
 
         robot_cal = robot_config.get("calibration", {})
         global_cal = raw.get("calibration", {})
-        tolerance_factor = robot_cal.get("tolerance_factor",
-                           global_cal.get("tolerance_factor", 3.0))
+        tolerance1_factor = robot_cal.get("tolerance1_factor",
+                            global_cal.get("tolerance1_factor", 3.0))
+        tolerance2_factor = robot_cal.get("tolerance2_factor",
+                            global_cal.get("tolerance2_factor", 6.0))
 
         return cls(
             robot_name=robot_name,
@@ -77,10 +74,10 @@ class Config:
             calibration_exclude_episodes=raw.get("calibration", {}).get("exclude_episodes", []),
             enabled_parameters=enabled_params,
             home_position=home_position,
-            tolerances=tolerances,
-            tolerance_floor=tolerance_floor,
-            tolerance_factor=tolerance_factor,
-            use_tolerance_floor=True,
+            tolerance1=tolerance1,
+            tolerance2=tolerance2,
+            tolerance1_factor=tolerance1_factor,
+            tolerance2_factor=tolerance2_factor,
             output_dir=raw.get("output", {}).get("dir", "detection_summary"),
             output_labels=raw.get("output", {}).get("labels"),
         )

@@ -11,7 +11,8 @@ from .calibration import find_kuavo_episode_files
 from .loaders.loader_factory import LoaderFactory
 
 _DUMP_KEYS: list[str] = [
-    "arm_joint_positions",
+    "left_arm_joint_positions",
+    "right_arm_joint_positions",
     "leg_joint_positions",
     "leg_joint_torques",
     "base_orientation",

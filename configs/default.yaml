@@ -1,10 +1,10 @@
-robot: yuanli
+robot: kuavo
 
 output:
-  dir: /mnt/public/dht/原力不合格数据/二次夹取
+  dir: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
 
 data:
-  raw_path: /mnt/public/dht/原力不合格数据/二次夹取
+  raw_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
 
 calibration:
   data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
@@ -12,4 +12,5 @@ calibration:
     # episode_0002,
     # episode_0005
    ]
-  tolerance_factor: 3.0
+  tolerance1_factor: 2.0
+  tolerance2_factor: 3.0

@@ -94,13 +94,11 @@ def build_home_position(
     return home
 
 
-def build_tolerances(
+def _build_tolerance_group(
     stats: dict[str, dict[str, Any]],
     robot_params: RobotParameters,
     sigma_factor: float = 3.0,
-    floor: dict[str, float] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    floor = floor or {}
     tol: dict[str, dict[str, Any]] = {}
     for group_name, group_params in robot_params.get_groups().items():
         tol[group_name] = {}
@@ -111,9 +109,25 @@ def build_tolerances(
                 continue
             s = stats[param.path]
             tol[group_name][param.key] = compute_tolerance(
-                s, param.param_type, sigma_factor, floor, param.key
+                s, param.param_type, sigma_factor
             )
     return tol
+
+
+def build_tolerance1(
+    stats: dict[str, dict[str, Any]],
+    robot_params: RobotParameters,
+    sigma_factor: float = 3.0,
+) -> dict[str, dict[str, Any]]:
+    return _build_tolerance_group(stats, robot_params, sigma_factor)
+
+
+def build_tolerance2(
+    stats: dict[str, dict[str, Any]],
+    robot_params: RobotParameters,
+    sigma_factor: float = 6.0,
+) -> dict[str, dict[str, Any]]:
+    return _build_tolerance_group(stats, robot_params, sigma_factor)
 
 
 def check_tolerance_warnings(
@@ -146,10 +160,10 @@ def calibrate(
     robot_name: str | None = None,
     arms: list[str] | None = None,
     config_path: str | Path = "configs/default.yaml",
-    tolerance_factor: float = 3.0,
+    tolerance1_factor: float = 3.0,
+    tolerance2_factor: float = 6.0,
     write_config: bool = True,
     exclude_episodes: list[str] | None = None,
-    tolerance_floor: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     data_path = Path(data_path)
     if not data_path.exists():
@@ -194,7 +208,8 @@ def calibrate(
 
     result: dict[str, Any] = {
         "home_position": {},
-        "tolerances": {},
+        "tolerance1": {},
+        "tolerance2": {},
         "statistics": {},
         "tolerance_details": {},
         "skipped_parameters": [],
@@ -204,8 +219,6 @@ def calibrate(
         "excluded": [d.name for d in excluded_dirs],
         "used": [d.name for d in episode_dirs],
     }
-
-    tf = tolerance_floor or {}
 
     stats: dict[str, dict[str, Any]] = {}
     skipped: list[str] = []
@@ -224,13 +237,8 @@ def calibrate(
     result["statistics"] = stats
 
     result["home_position"] = build_home_position(stats, robot_params)
-    result["tolerances"] = build_tolerances(stats, robot_params, tolerance_factor, tf)
-
-    tf_out: dict[str, float] = {}
-    for param in robot_params.params:
-        if param.calibrate:
-            tf_out[param.key] = tf.get(param.key, 0.0)
-    result["tolerance_floor"] = tf_out
+    result["tolerance1"] = build_tolerance1(stats, robot_params, tolerance1_factor)
+    result["tolerance2"] = build_tolerance2(stats, robot_params, tolerance2_factor)
 
     if write_config:
         write_calibration_to_robot_config(config_path, robot_name, result)
@@ -253,9 +261,10 @@ def write_calibration_to_robot_config(
         raw = {"robot": {"name": robot_name}}
 
     raw["home_position"] = calibration_result["home_position"]
-    raw["tolerances"] = calibration_result["tolerances"]
-    raw["tolerance_floor"] = calibration_result.get("tolerance_floor", {})
+    raw["tolerance1"] = calibration_result["tolerance1"]
+    raw["tolerance2"] = calibration_result["tolerance2"]
     raw.pop("calibration", None)
+    raw.pop("tolerance_floor", None)
 
     with open(robot_config_path, "w") as f:
         yaml.dump(raw, f, sort_keys=False, allow_unicode=True)
@@ -311,11 +320,12 @@ def print_summary(result: dict[str, Any]) -> None:
             print(f"  {key}: {val}")
         print()
 
-    for group, tol_group in result.get("tolerances", {}).items():
-        print(f"=== {group} tolerances ===")
-        for key, val in tol_group.items():
-            print(f"  {key}: {val}")
-        print()
+    for label, key in [("tolerance1", "tolerance1"), ("tolerance2", "tolerance2")]:
+        for group, tol_group in result.get(key, {}).items():
+            print(f"=== {group} {label} ===")
+            for k, val in tol_group.items():
+                print(f"  {k}: {val}")
+            print()
 
     skipped = result.get("skipped_parameters", [])
     if skipped:
@@ -346,10 +356,16 @@ def main() -> None:
         help="Robot name (overrides config)",
     )
     parser.add_argument(
-        "--tolerance-factor",
+        "--tolerance1-factor",
         type=float,
         default=None,
-        help="Multiplier for std to compute tolerance (default: from config)",
+        help="Multiplier for std to compute tolerance1 (default: from config)",
+    )
+    parser.add_argument(
+        "--tolerance2-factor",
+        type=float,
+        default=None,
+        help="Multiplier for std to compute tolerance2 (default: from config)",
     )
     parser.add_argument(
         "--dry-run",
@@ -364,18 +380,14 @@ def main() -> None:
         print("No calibration data path configured. Set calibration.data_path in config YAML.")
         return
 
-    tf = {}
-    if cfg.tolerance_floor:
-        tf = dict(cfg.tolerance_floor)
-
     result = calibrate(
         data_path,
         robot_name=args.robot or cfg.robot_name,
         config_path=args.config,
-        tolerance_factor=args.tolerance_factor if args.tolerance_factor is not None else cfg.tolerance_factor,
+        tolerance1_factor=args.tolerance1_factor if args.tolerance1_factor is not None else cfg.tolerance1_factor,
+        tolerance2_factor=args.tolerance2_factor if args.tolerance2_factor is not None else cfg.tolerance2_factor,
         write_config=not args.dry_run,
         exclude_episodes=cfg.calibration_exclude_episodes,
-        tolerance_floor=tf,
     )
 
     result["_data_path"] = str(data_path)

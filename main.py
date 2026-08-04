@@ -98,11 +98,13 @@ def main():
     )
 
     for assessment_type in ("Initialization", "Reset"):
-        home_key = "first_frame" if assessment_type == "Initialization" else "last_frame"
+        score_key = "first_frame_score" if assessment_type == "Initialization" else "last_frame_score"
+        passed_key = "first_frame_passed" if assessment_type == "Initialization" else "last_frame_passed"
         load_error = sum(1 for r in results if r.get("status") == "load_error")
-        success = sum(1 for r in results if r.get("status") != "load_error" and r.get(home_key, True))
+        success = sum(1 for r in results if r.get("status") != "load_error" and r.get(passed_key, True))
         failed = len(results) - success - load_error
-        print(f"[{assessment_type}] Total: {len(results)} | PASS: {success} | FAIL: {failed} | LOAD_ERROR: {load_error}")
+        avg_score = sum(r.get(score_key, 0) for r in results) / len(results) if results else 0
+        print(f"[{assessment_type}] Total: {len(results)} | PASS: {success} | FAIL: {failed} | LOAD_ERROR: {load_error} | Avg Score: {avg_score:.1f}")
     out_dir = Path(output_dir) / dataset_name
     print(f"Output -> {out_dir}")
 

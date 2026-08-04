@@ -121,26 +121,59 @@ def compute_error(current, home, param_type: ParameterType):
     raise ValueError(f"Unknown parameter type: {param_type}")
 
 
-# ── Tolerance checking ────────────────────────────────────────
+# ── Parameter Score computation ─────────────────────────────────
 
 
-def is_scalar_fail(error: float, tolerance: float) -> bool:
-    return error > tolerance
+def _scalar_score(error: float, tolerance1: float, tolerance2: float) -> float:
+    if error <= tolerance1:
+        return 100.0
+    if error >= tolerance2:
+        return 0.0
+    return 100.0 * (tolerance2 - error) / (tolerance2 - tolerance1)
 
 
-def is_vector_fail(error: dict[str, Any], tolerance: list[float] | float) -> bool:
-    if isinstance(tolerance, (int, float)):
-        return any(e > tolerance for e in error["dimensions"])
-    return any(e > t for e, t in zip(error["dimensions"], tolerance))
+def _vector_score(
+    error: dict[str, Any],
+    tolerance1: list[float] | float,
+    tolerance2: list[float] | float,
+) -> float:
+    dims = error["dimensions"]
+    n = len(dims)
+    if isinstance(tolerance1, (int, float)):
+        t1 = [float(tolerance1)] * n
+    else:
+        t1 = list(tolerance1)
+    if isinstance(tolerance2, (int, float)):
+        t2 = [float(tolerance2)] * n
+    else:
+        t2 = list(tolerance2)
+
+    per_dim: list[float] = []
+    for i in range(n):
+        if dims[i] <= t1[i]:
+            per_dim.append(100.0)
+        elif dims[i] >= t2[i]:
+            per_dim.append(0.0)
+        else:
+            per_dim.append(100.0 * (t2[i] - dims[i]) / (t2[i] - t1[i]))
+
+    if any(s == 0.0 for s in per_dim):
+        return 0.0
+    return float(np.mean(per_dim))
 
 
-def is_fail(error, tolerance, param_type: ParameterType) -> bool:
+def compute_parameter_score(
+    error,
+    tolerance1,
+    tolerance2,
+    param_type: ParameterType,
+) -> float:
     if param_type == "scalar":
-        return is_scalar_fail(error, tolerance)
+        return _scalar_score(float(error), float(tolerance1), float(tolerance2))
     if param_type == "vector":
-        return is_vector_fail(error, tolerance)
+        return _vector_score(error, tolerance1, tolerance2)
     if param_type == "quaternion":
-        return is_scalar_fail(error, tolerance)
+        return _scalar_score(float(error), float(tolerance1), float(tolerance2))
     raise ValueError(f"Unknown parameter type: {param_type}")
 
 
@@ -209,18 +242,12 @@ def compute_tolerance(
     stats: dict[str, Any],
     param_type: ParameterType,
     sigma_factor: float = 3.0,
-    floor_dict: dict[str, float] | None = None,
-    param_key: str | None = None,
 ) -> Any:
-    floor_dict = floor_dict or {}
-    f = floor_dict.get(param_key, 0.0) if param_key else 0.0
     if param_type == "scalar":
-        raw = sigma_factor * stats["std"]
-        return float(max(raw, f))
+        return float(sigma_factor * stats["std"])
     if param_type == "vector":
         raw = sigma_factor * np.asarray(stats["std"], dtype=np.float32)
-        return np.maximum(raw, f).tolist()
+        return raw.tolist()
     if param_type == "quaternion":
-        raw = sigma_factor * stats["std"]
-        return float(max(raw, f))
+        return float(sigma_factor * stats["std"])
     raise ValueError(f"Unknown parameter type: {param_type}")

@@ -7,7 +7,7 @@ import numpy as np
 from .parameters import (
     RobotParameters,
     compute_error,
-    is_fail,
+    compute_parameter_score,
 )
 from .loader import Episode
 
@@ -17,7 +17,8 @@ def compute_episode_metrics(
     group: str,
     robot_params: RobotParameters,
     home_position: dict[str, dict[str, Any]] | None = None,
-    tolerances: dict[str, dict[str, Any]] | None = None,
+    tolerance1: dict[str, dict[str, Any]] | None = None,
+    tolerance2: dict[str, dict[str, Any]] | None = None,
     enabled_parameters: list[str] | None = None,
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
@@ -33,9 +34,6 @@ def compute_episode_metrics(
 
     param_results: list[dict[str, Any]] = []
     first_frame_results: list[dict[str, Any]] = []
-
-    first_fail = False
-    last_fail = False
 
     for param in group_params:
         if enabled_set is not None and param.path not in enabled_set:
@@ -53,49 +51,51 @@ def compute_episode_metrics(
         current_val = end[param.key]
         err = compute_error(current_val, home_val, param.param_type)
 
-        tol = None
-        fail = False
-        if tolerances and group in tolerances:
-            tol = tolerances[group].get(param.key)
-            if tol is not None:
-                fail = is_fail(err, tol, param.param_type)
-                if fail:
-                    last_fail = True
+        tol1 = None
+        tol2 = None
+        score = 100.0
+        if tolerance1 and tolerance2 and group in tolerance1 and group in tolerance2:
+            tol1 = tolerance1[group].get(param.key)
+            tol2 = tolerance2[group].get(param.key)
+            if tol1 is not None and tol2 is not None:
+                score = compute_parameter_score(err, tol1, tol2, param.param_type)
 
         entry: dict[str, Any] = {
             "path": param.path,
             "key": param.key,
             "type": param.param_type,
             "error": err,
+            "score": score,
             "home_value": home_val,
             "current_value": current_val,
         }
-        if tol is not None:
-            entry["tolerance"] = tol
-            entry["fail"] = fail
+        if tol1 is not None and tol2 is not None:
+            entry["tolerance1"] = tol1
+            entry["tolerance2"] = tol2
         param_results.append(entry)
 
         start_val = start[param.key]
         first_err = compute_error(start_val, home_val, param.param_type)
+        first_score = 100.0
+        if tol1 is not None and tol2 is not None:
+            first_score = compute_parameter_score(first_err, tol1, tol2, param.param_type)
         first_entry: dict[str, Any] = {
             "path": param.path,
             "key": param.key,
             "type": param.param_type,
             "error": first_err,
+            "score": first_score,
             "home_value": home_val,
             "current_value": start_val,
         }
-        if tol is not None:
-            ffail = is_fail(first_err, tol, param.param_type)
-            first_entry["tolerance"] = tol
-            first_entry["fail"] = ffail
-            if ffail:
-                first_fail = True
+        if tol1 is not None and tol2 is not None:
+            first_entry["tolerance1"] = tol1
+            first_entry["tolerance2"] = tol2
         first_frame_results.append(first_entry)
 
     result["parameters"] = param_results
     result["first_frame_parameters"] = first_frame_results
-    result["first_frame_home"] = not first_fail
-    result["last_frame_home"] = not last_fail
+    result["first_frame_scores"] = [p["score"] for p in first_frame_results]
+    result["last_frame_scores"] = [p["score"] for p in param_results]
 
     return result

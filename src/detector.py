@@ -5,54 +5,67 @@ from typing import Any
 
 from .calibration import find_episode_dirs, find_quanta_x1_episode_dirs, find_kuavo_episode_files
 from .config import Config
-from .exporter import _PATH_MESSAGE_MAP, _kuavo_arm_split, export_episode_result
+from .exporter import export_episode_result
 from .loaders.loader_factory import LoaderFactory
 from .loader import Episode
 from .metrics import compute_episode_metrics
 
 
-def _path_to_messages(pr: dict[str, Any]) -> list[str]:
-    path = pr.get("path", "")
-
-    if path == "arm.arm_joint_positions":
-        return _kuavo_arm_split(pr)
-
-    msg = _PATH_MESSAGE_MAP.get(path)
-    if msg:
-        return [msg]
-
-    return [path]
-
-
-def _build_fail_reasons(param_results: list[dict[str, Any]]) -> list[str]:
+def _build_reasons(
+    param_results: list[dict[str, Any]],
+    path_message_map: dict[str, str],
+) -> list[str]:
     reasons: list[str] = []
     for pr in param_results:
-        if not pr.get("fail"):
+        score = pr.get("score", 100)
+        if score >= 100:
             continue
-        reasons.extend(_path_to_messages(pr))
+        path = pr.get("path", "")
+        msg = path_message_map.get(path, path)
+        if score == 0:
+            reasons.append(f"{msg}严重偏离初始状态（0分）")
+        else:
+            reasons.append(f"{msg}未完全回到初始状态（{int(score)}分）")
     return reasons
+
+
+def _compute_assessment_score(
+    scores: list[float],
+) -> tuple[float, bool]:
+    if not scores:
+        return 100.0, True
+    if any(s == 0.0 for s in scores):
+        return 0.0, False
+    return float(sum(scores) / len(scores)), True
 
 
 def check_episode(
     episode: Episode,
     home_position: dict[str, dict] | None = None,
-    tolerances: dict[str, dict] | None = None,
+    tolerance1: dict[str, dict] | None = None,
+    tolerance2: dict[str, dict] | None = None,
     robot_params=None,
     enabled_parameters: list[str] | None = None,
+    path_message_map: dict[str, str] | None = None,
     label: str = "",
 ) -> dict[str, Any]:
     if robot_params is None:
         return {
             "episode_path": str(episode.path),
             "label": label,
-            "first_fail_reasons": ["no_robot_params"],
-            "last_fail_reasons": ["no_robot_params"],
+            "first_frame_score": 0.0,
+            "last_frame_score": 0.0,
+            "first_frame_passed": False,
+            "last_frame_passed": False,
+            "first_frame_reasons": ["no_robot_params"],
+            "last_frame_reasons": ["no_robot_params"],
             "arm_metrics": [],
         }
 
+    if path_message_map is None:
+        path_message_map = {}
+
     group_results: list[dict[str, Any]] = []
-    first_fail_reasons: list[str] = []
-    last_fail_reasons: list[str] = []
 
     for group in episode.get_groups():
         if group not in episode.groups:
@@ -64,30 +77,42 @@ def check_episode(
             episode, group,
             robot_params=robot_params,
             home_position=home_position,
-            tolerances=tolerances,
+            tolerance1=tolerance1,
+            tolerance2=tolerance2,
             enabled_parameters=enabled_parameters,
         )
 
         group_results.append(metrics)
 
-        last_fail_reasons.extend(
-            _build_fail_reasons(metrics.get("parameters", []))
-        )
-        first_fail_reasons.extend(
-            _build_fail_reasons(metrics.get("first_frame_parameters", []))
-        )
+    first_scores: list[float] = []
+    last_scores: list[float] = []
+    for gm in group_results:
+        first_scores.extend(gm.get("first_frame_scores", []))
+        last_scores.extend(gm.get("last_frame_scores", []))
 
-    first_frame = all(gm.get("first_frame_home", True) for gm in group_results) if group_results else True
-    last_frame = all(gm.get("last_frame_home", True) for gm in group_results) if group_results else True
+    first_score, first_passed = _compute_assessment_score(first_scores)
+    last_score, last_passed = _compute_assessment_score(last_scores)
+
+    first_reasons: list[str] = []
+    last_reasons: list[str] = []
+    for gm in group_results:
+        first_reasons.extend(_build_reasons(
+            gm.get("first_frame_parameters", []), path_message_map
+        ))
+        last_reasons.extend(_build_reasons(
+            gm.get("parameters", []), path_message_map
+        ))
 
     return {
         "episode_path": str(episode.path),
         "label": label,
-        "first_fail_reasons": first_fail_reasons,
-        "last_fail_reasons": last_fail_reasons,
+        "first_frame_score": first_score,
+        "last_frame_score": last_score,
+        "first_frame_passed": first_passed,
+        "last_frame_passed": last_passed,
+        "first_frame_reasons": first_reasons,
+        "last_frame_reasons": last_reasons,
         "arm_metrics": group_results,
-        "first_frame": first_frame,
-        "last_frame": last_frame,
     }
 
 
@@ -108,7 +133,8 @@ def scan_episodes(
     loader = LoaderFactory.get_loader(config.robot_name)
     results: list[dict[str, Any]] = []
 
-    tolerances = config.tolerances
+    tolerance1 = config.tolerance1
+    tolerance2 = config.tolerance2
     home_position = config.home_position
     robot_params = config.robot_params
 
@@ -127,7 +153,8 @@ def scan_episodes(
                 result = check_episode(
                     episode=episode,
                     home_position=home_position,
-                    tolerances=tolerances,
+                    tolerance1=tolerance1,
+                    tolerance2=tolerance2,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
                     label=ep_dir.name,
@@ -138,8 +165,12 @@ def scan_episodes(
                 err = {
                     "episode_path": str(ep_dir),
                     "label": ep_dir.name,
-                    "first_fail_reasons": [f"load_error: {e}"],
-                    "last_fail_reasons": [f"load_error: {e}"],
+                    "first_frame_score": 0.0,
+                    "last_frame_score": 0.0,
+                    "first_frame_passed": False,
+                    "last_frame_passed": False,
+                    "first_frame_reasons": [f"load_error: {e}"],
+                    "last_frame_reasons": [f"load_error: {e}"],
                     "arm_metrics": [],
                     "status": "load_error",
                 }
@@ -153,7 +184,8 @@ def scan_episodes(
                 result = check_episode(
                     episode=episode,
                     home_position=home_position,
-                    tolerances=tolerances,
+                    tolerance1=tolerance1,
+                    tolerance2=tolerance2,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
                     label=ep_dir.name,
@@ -164,8 +196,12 @@ def scan_episodes(
                 err = {
                     "episode_path": str(ep_dir),
                     "label": ep_dir.name,
-                    "first_fail_reasons": [f"load_error: {e}"],
-                    "last_fail_reasons": [f"load_error: {e}"],
+                    "first_frame_score": 0.0,
+                    "last_frame_score": 0.0,
+                    "first_frame_passed": False,
+                    "last_frame_passed": False,
+                    "first_frame_reasons": [f"load_error: {e}"],
+                    "last_frame_reasons": [f"load_error: {e}"],
                     "arm_metrics": [],
                     "status": "load_error",
                 }
@@ -180,7 +216,8 @@ def scan_episodes(
                 result = check_episode(
                     episode=episode,
                     home_position=home_position,
-                    tolerances=tolerances,
+                    tolerance1=tolerance1,
+                    tolerance2=tolerance2,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
                     label=label,
@@ -191,8 +228,12 @@ def scan_episodes(
                 err = {
                     "episode_path": str(ep_dir),
                     "label": label,
-                    "first_fail_reasons": [f"load_error: {e}"],
-                    "last_fail_reasons": [f"load_error: {e}"],
+                    "first_frame_score": 0.0,
+                    "last_frame_score": 0.0,
+                    "first_frame_passed": False,
+                    "last_frame_passed": False,
+                    "first_frame_reasons": [f"load_error: {e}"],
+                    "last_frame_reasons": [f"load_error: {e}"],
                     "arm_metrics": [],
                     "status": "load_error",
                 }
