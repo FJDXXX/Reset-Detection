@@ -59,7 +59,7 @@ def check_episode(
             "last_frame_passed": False,
             "first_frame_reasons": ["no_robot_params"],
             "last_frame_reasons": ["no_robot_params"],
-            "arm_metrics": [],
+            "group_metrics": [],
         }
 
     if path_message_map is None:
@@ -112,7 +112,7 @@ def check_episode(
         "last_frame_passed": last_passed,
         "first_frame_reasons": first_reasons,
         "last_frame_reasons": last_reasons,
-        "arm_metrics": group_results,
+        "group_metrics": group_results,
     }
 
 
@@ -171,7 +171,7 @@ def scan_episodes(
                     "last_frame_passed": False,
                     "first_frame_reasons": [f"load_error: {e}"],
                     "last_frame_reasons": [f"load_error: {e}"],
-                    "arm_metrics": [],
+                    "group_metrics": [],
                     "status": "load_error",
                 }
                 results.append(err)
@@ -202,7 +202,7 @@ def scan_episodes(
                     "last_frame_passed": False,
                     "first_frame_reasons": [f"load_error: {e}"],
                     "last_frame_reasons": [f"load_error: {e}"],
-                    "arm_metrics": [],
+                    "group_metrics": [],
                     "status": "load_error",
                 }
                 results.append(err)
@@ -234,7 +234,7 @@ def scan_episodes(
                     "last_frame_passed": False,
                     "first_frame_reasons": [f"load_error: {e}"],
                     "last_frame_reasons": [f"load_error: {e}"],
-                    "arm_metrics": [],
+                    "group_metrics": [],
                     "status": "load_error",
                 }
                 results.append(err)

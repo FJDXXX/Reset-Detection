@@ -33,12 +33,13 @@ def _extract_frame_data(frame: dict[str, Any]) -> dict[str, list[float]]:
 
 
 def _dump_episode(episode, output_dir: Path) -> dict[str, Any]:
-    group = episode.groups.get("arm")
-    if group is None or not group.frames:
-        raise ValueError(f"No arm group data in {episode.path}")
+    groups = list(episode.groups.values())
+    if not groups:
+        raise ValueError(f"No group data in {episode.path}")
 
-    first = group.frames[0]
-    last = group.frames[-1]
+    primary = groups[0]
+    first = primary.frames[0]
+    last = primary.frames[-1]
 
     has_dexhand = "left_dexhand_positions" in first
 
@@ -47,7 +48,7 @@ def _dump_episode(episode, output_dir: Path) -> dict[str, Any]:
     record: dict[str, Any] = {
         "episode": episode_name,
         "source": episode.meta.get("bag_file", episode.path.name),
-        "num_frames": len(group.frames),
+        "num_frames": len(primary.frames),
         "has_dexhand": has_dexhand,
         "first_frame": _extract_frame_data(first),
         "last_frame": _extract_frame_data(last),

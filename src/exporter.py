@@ -28,14 +28,14 @@ _PATH_MESSAGE_MAP: dict[str, str] = {
     "head.head_rotation": "头部姿态",
     "arm.left_arm_joint_positions": "左臂关节",
     "arm.right_arm_joint_positions": "右臂关节",
-    "arm.base_orientation": "机器人基座姿态",
-    "arm.left_dexhand_positions": "左手灵巧手",
-    "arm.right_dexhand_positions": "右手灵巧手",
-    "arm.leg_joint_positions": "机器人腿部关节",
-    "arm.leg_joint_torques": "机器人腿部关节扭矩",
-    "arm.gravity_vector": "重力向量",
-    "arm.angular_velocity": "角速度",
     "arm.gripper_joint_positions": "夹爪",
+    "leg.leg_joint_positions": "机器人腿部关节",
+    "leg.leg_joint_torques": "机器人腿部关节扭矩",
+    "base.base_orientation": "机器人基座姿态",
+    "imu.gravity_vector": "重力向量",
+    "imu.angular_velocity": "角速度",
+    "dexhand.left_dexhand_positions": "左手灵巧手",
+    "dexhand.right_dexhand_positions": "右手灵巧手",
 }
 
 

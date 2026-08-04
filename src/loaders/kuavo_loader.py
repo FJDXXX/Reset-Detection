@@ -211,10 +211,11 @@ class KuavoLoader(BaseLoader):
 
         episode = Episode(path=bag_path, meta=meta)
 
-        episode.groups["arm"] = GroupData(
-            group_name="arm",
-            frames=frames,
-            fps=0,
-        )
+        for group_name in ("arm", "leg", "base", "imu", "dexhand"):
+            episode.groups[group_name] = GroupData(
+                group_name=group_name,
+                frames=frames,
+                fps=0,
+            )
 
         return episode

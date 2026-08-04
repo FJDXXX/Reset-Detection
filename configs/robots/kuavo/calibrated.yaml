@@ -10,6 +10,11 @@ robot:
         type: vector
         calibrate: true
         detect: true
+      gripper_joint_positions:
+        type: vector
+        calibrate: true
+        detect: false
+    leg:
       leg_joint_positions:
         type: vector
         calibrate: true
@@ -18,10 +23,12 @@ robot:
         type: vector
         calibrate: true
         detect: false
+    base:
       base_orientation:
         type: quaternion
         calibrate: true
         detect: true
+    imu:
       gravity_vector:
         type: vector
         calibrate: true
@@ -30,10 +37,7 @@ robot:
         type: vector
         calibrate: false
         detect: false
-      gripper_joint_positions:
-        type: vector
-        calibrate: true
-        detect: false
+    dexhand:
       left_dexhand_positions:
         type: vector
         calibrate: true
@@ -60,6 +64,10 @@ home_position:
     - -0.06254658102989197
     - -0.10310856252908707
     - 0.1484537422657013
+    gripper_joint_positions:
+    - -0.05220378562808037
+    - -9.424707241123542e-05
+  leg:
     leg_joint_positions:
     - 0.015307500958442688
     - -0.0005734508740715683
@@ -86,18 +94,18 @@ home_position:
     - -21.30246353149414
     - 17.04888343811035
     - -0.609834611415863
+  base:
     base_orientation:
     - 0.982567657115243
     - 0.0020568764221147798
     - 0.03243215528546964
     - -0.18304295603487614
+  imu:
     gravity_vector:
     - -0.6336593627929688
     - -0.07144683599472046
     - 9.768937110900879
-    gripper_joint_positions:
-    - -0.05220378562808037
-    - -9.424707241123542e-05
+  dexhand:
     left_dexhand_positions:
     - 16.0
     - 79.0999984741211
@@ -130,6 +138,10 @@ tolerance1:
     - 1.0146868228912354
     - 0.4914066195487976
     - 0.27482369542121887
+    gripper_joint_positions:
+    - 0.13963107764720917
+    - 0.0022112440783530474
+  leg:
     leg_joint_positions:
     - 0.009851176291704178
     - 0.01303281169384718
@@ -156,14 +168,14 @@ tolerance1:
     - 4.052237510681152
     - 6.7254462242126465
     - 0.7714508771896362
+  base:
     base_orientation: 0.27529897517775037
+  imu:
     gravity_vector:
     - 0.1323288083076477
     - 0.22616201639175415
     - 0.10608842223882675
-    gripper_joint_positions:
-    - 0.13963107764720917
-    - 0.0022112440783530474
+  dexhand:
     left_dexhand_positions:
     - 66.44982147216797
     - 81.15715789794922
@@ -196,6 +208,10 @@ tolerance2:
     - 1.522030234336853
     - 0.737109899520874
     - 0.4122355580329895
+    gripper_joint_positions:
+    - 0.20944660902023315
+    - 0.003316866233944893
+  leg:
     leg_joint_positions:
     - 0.014776764437556267
     - 0.019549217075109482
@@ -222,14 +238,14 @@ tolerance2:
     - 6.0783562660217285
     - 10.08816909790039
     - 1.1571762561798096
+  base:
     base_orientation: 0.41294846276662556
+  imu:
     gravity_vector:
     - 0.19849321246147156
     - 0.3392430245876312
     - 0.15913262963294983
-    gripper_joint_positions:
-    - 0.20944660902023315
-    - 0.003316866233944893
+  dexhand:
     left_dexhand_positions:
     - 99.67472839355469
     - 121.73573303222656
