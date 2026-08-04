@@ -86,7 +86,6 @@ Loader（按机器人类型加载 Episode 数据 → Episode + GroupData 结构�
 | `detector.py` | Episode 扫描、单 Episode 检测、触发导出 |
 | `metrics.py` | 单 Group 指标计算 |
 | `exporter.py` | Episode-Level JSON Contract 导出 |
-| `loader_debug.py` | Loader 调试验证工具（开发用） |
 
 ---
 
@@ -370,71 +369,9 @@ class BaseLoader(ABC):
 
 ---
 
-## 11. 开发工具
+## 11. 扩展新机器人
 
-### 11.1 Loader Debug（loader_debug.py）
-
-`loader_debug.py` 是一个**开发调试工具**，用于验证 Loader 能否正确加载 Episode 数据、检查字段覆盖情况、预览首末帧数值。不属于生产检测主流程。
-
-**用途**：
-
-- 新机器人适配时验证 Loader 加载逻辑
-- 检查数据源字段名是否映射正确
-- 查看 Episode 的数据完整性
-- 快速定位加载失败的原因
-
-### 11.2 使用方式
-
-```bash
-# 通过 main.py 进入 debug 模式
-python main.py --debug-loader \
-  --robot yuanli \
-  --data-path /path/to/episodes \
-  --sample 5
-
-# 或直接调用模块
-python -m src.loader_debug \
-  --robot kuavo \
-  --data-path /path/to/bags \
-  --sample-size 10
-```
-
-| 参数 | 说明 |
-|---|---|
-| `--robot` | 机器人名称 |
-| `--data-path` | 数据根目录 |
-| `--sample` | 随机采样 N 个 Episode（不指定则全量） |
-
-### 11.3 输出解读
-
-- **控制台输出**：每个 Episode 的 groups、字段列表、首帧/末帧数值、验证结果
-- **文件输出**：`detection_summary/{robot}/loader_debug_report.txt`，包含完整报告
-
-每条 Episode 的报告包含：
-
-```
-Episode: episode_good
-Detected Groups:
-  right_arm
-  left_arm
-Start Pose — right_arm:
-  ee_positions: [0.200, 0.000, ...]
-  gripper: 0.000
-  joint_positions: [0.000, 0.000, ...]
-  ...
-Fields: 5
-  ee_positions: list
-  gripper: float
-  joint_positions: list
-  ...
-Result: PASS
-```
-
----
-
-## 12. 扩展新机器人
-
-### 12.1 实现 Loader
+### 11.1 实现 Loader
 
 创建新的 Loader 类，继承 `BaseLoader`：
 
@@ -452,14 +389,14 @@ class MyRobotLoader(BaseLoader):
         ...
 ```
 
-### 12.2 注册到 Factory
+### 11.2 注册到 Factory
 
 ```python
 from src.loaders.loader_factory import LoaderFactory
 LoaderFactory.register("my_robot", MyRobotLoader)
 ```
 
-### 12.3 添加配置
+### 11.3 添加配置
 
 创建机器人配置文件：
 
@@ -472,7 +409,7 @@ configs/robots/my_robot/calibrated.yaml
 - **自动校准**：运行 `python -m src.calibration` 自动生成 `home_position` 和 `tolerances`
 - **手工零位**：直接编辑 `calibrated.yaml` 中的 `home_position` 和 `tolerances`
 
-### 12.4 新增参数类型
+### 11.4 新增参数类型
 
 如果现有类型（scalar、vector、quaternion）不能满足需求，扩展 `_PARAMETER_TYPES` 并实现：
 
@@ -483,9 +420,9 @@ configs/robots/my_robot/calibrated.yaml
 
 ---
 
-## 13. CLI 使用说明
+## 12. CLI 使用说明
 
-### 13.1 检测命令
+### 12.1 检测命令
 
 ```bash
 # 使用默认配置（读取 configs/default.yaml）
@@ -506,7 +443,7 @@ python main.py \
   --label episode_002 "Task B"
 ```
 
-### 13.2 校准命令
+### 12.2 校准命令
 
 ```bash
 # 使用默认配置
@@ -522,25 +459,9 @@ python -m src.calibration \
 python -m src.calibration --dry-run
 ```
 
-### 13.3 Loader Debug 命令
-
-```bash
-# 通过 main.py 入口
-python main.py --debug-loader \
-  --robot kuavo \
-  --data-path /path/to/bags \
-  --sample 5
-
-# 直接调用模块
-python -m src.loader_debug \
-  --robot yuanli \
-  --data-path /path/to/episodes \
-  --sample-size 10
-```
-
 ---
 
-## 14. 测试
+## 13. 测试
 
 ```bash
 pytest tests/ -v
@@ -556,11 +477,11 @@ pytest tests/ -v
 
 ---
 
-## 15. 故障排查
+## 14. 故障排查
 
 | 现象 | 常见原因 | 解决办法 |
 |---|---|---|
-| `LOAD_ERROR` | 数据文件缺失或格式不兼容 | 先运行 `--debug-loader` 检查数据完整性 |
+| `LOAD_ERROR` | 数据文件缺失或格式不兼容 | 检查数据文件路径和格式是否正确 |
 | 所有 Episode 均为 PASS | Tolerance 过大，漏检 | 降低 `tolerance_factor` 或降低 `tolerance_floor` |
 | 所有 Episode 均为 FAIL | Tolerance 过小，误报 | 增大 `tolerance_factor` 或提高 `tolerance_floor` |
 | Tolerance > 1.0 报警 | 数据存在多峰分布（multimodal） | 通过 `exclude_episodes` 排除离群 Episode |

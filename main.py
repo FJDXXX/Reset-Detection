@@ -3,8 +3,6 @@ from pathlib import Path
 
 from src.config import load_config
 from src.detector import scan_episodes
-from src.kuavo_dump import run_kuavo_dump
-from src.loader_debug import run_loader_debug
 
 
 def main():
@@ -42,16 +40,6 @@ def main():
         help="Robot name (overrides config file, e.g. yuanli, quanta_x1)",
     )
     parser.add_argument(
-        "--debug-loader",
-        action="store_true",
-        help="Run loader validation instead of detection",
-    )
-    parser.add_argument(
-        "--kuavo-dump",
-        action="store_true",
-        help="Run Kuavo calibration data dump",
-    )
-    parser.add_argument(
         "--sample",
         type=int,
         default=None,
@@ -66,22 +54,6 @@ def main():
         cfg.robot_name = args.robot
 
     output_dir = args.output_dir or cfg.output_dir
-
-    if args.debug_loader:
-        run_loader_debug(
-            robot_name=cfg.robot_name,
-            data_path=cfg.data_raw_path,
-            sample_size=args.sample,
-            output_dir=Path(output_dir) / "loader_debug",
-        )
-        return
-
-    if args.kuavo_dump:
-        run_kuavo_dump(
-            data_path=cfg.data_raw_path,
-            output_dir=Path(output_dir) / "dumps",
-        )
-        return
 
     labels = {}
     if args.label:
