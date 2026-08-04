@@ -25,14 +25,7 @@ def main():
         default=None,
         help="Path to output root directory (overrides config file)",
     )
-    parser.add_argument(
-        "--label", "-l",
-        type=str,
-        nargs=2,
-        action="append",
-        metavar=("DIR_NAME", "LABEL"),
-        help="Map a directory name to a display label (can be used multiple times)",
-    )
+
     parser.add_argument(
         "--robot", "-r",
         type=str,
@@ -55,18 +48,12 @@ def main():
 
     output_dir = args.output_dir or cfg.output_dir
 
-    labels = {}
-    if args.label:
-        for dir_name, label in args.label:
-            labels[dir_name] = label
-
     dataset_name = Path(cfg.data_raw_path).name + "_detection_output"
 
     results = scan_episodes(
         cfg.data_raw_path, cfg,
         output_dir=output_dir,
         dataset_name=dataset_name,
-        labels=labels or None,
     )
 
     for assessment_type in ("Initialization", "Reset"):

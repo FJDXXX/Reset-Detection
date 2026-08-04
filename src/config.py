@@ -27,7 +27,6 @@ class Config:
     tolerance2_factor: float = 6.0
 
     output_dir: str = "detection_summary"
-    output_labels: list[str] | None = None
 
     @classmethod
     def load(cls, path: str | Path = "configs/default.yaml") -> Config:
@@ -79,7 +78,6 @@ class Config:
             tolerance1_factor=tolerance1_factor,
             tolerance2_factor=tolerance2_factor,
             output_dir=raw.get("output", {}).get("dir", "detection_summary"),
-            output_labels=raw.get("output", {}).get("labels"),
         )
 
 

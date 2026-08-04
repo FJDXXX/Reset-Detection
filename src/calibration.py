@@ -160,8 +160,8 @@ def calibrate(
     robot_name: str | None = None,
     arms: list[str] | None = None,
     config_path: str | Path = "configs/default.yaml",
-    tolerance1_factor: float = 3.0,
-    tolerance2_factor: float = 6.0,
+    tolerance1_factor: float = 2.0,
+    tolerance2_factor: float = 3.0,
     write_config: bool = True,
     exclude_episodes: list[str] | None = None,
 ) -> dict[str, Any]:

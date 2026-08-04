@@ -47,12 +47,10 @@ def check_episode(
     robot_params=None,
     enabled_parameters: list[str] | None = None,
     path_message_map: dict[str, str] | None = None,
-    label: str = "",
 ) -> dict[str, Any]:
     if robot_params is None:
         return {
             "episode_path": str(episode.path),
-            "label": label,
             "first_frame_score": 0.0,
             "last_frame_score": 0.0,
             "first_frame_passed": False,
@@ -105,7 +103,6 @@ def check_episode(
 
     return {
         "episode_path": str(episode.path),
-        "label": label,
         "first_frame_score": first_score,
         "last_frame_score": last_score,
         "first_frame_passed": first_passed,
@@ -121,7 +118,6 @@ def scan_episodes(
     config: Config,
     output_dir: str | Path,
     dataset_name: str | None = None,
-    labels: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     root = Path(root_dir)
     if not root.exists():
@@ -157,14 +153,12 @@ def scan_episodes(
                     tolerance2=tolerance2,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
-                    label=ep_dir.name,
                 )
                 results.append(result)
                 _emit(result)
             except Exception as e:
                 err = {
                     "episode_path": str(ep_dir),
-                    "label": ep_dir.name,
                     "first_frame_score": 0.0,
                     "last_frame_score": 0.0,
                     "first_frame_passed": False,
@@ -188,14 +182,12 @@ def scan_episodes(
                     tolerance2=tolerance2,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
-                    label=ep_dir.name,
                 )
                 results.append(result)
                 _emit(result)
             except Exception as e:
                 err = {
                     "episode_path": str(ep_dir),
-                    "label": ep_dir.name,
                     "first_frame_score": 0.0,
                     "last_frame_score": 0.0,
                     "first_frame_passed": False,
@@ -210,7 +202,6 @@ def scan_episodes(
     else:
         all_episode_dirs = find_episode_dirs(root)
         for ep_dir in all_episode_dirs:
-            label = (labels or {}).get(ep_dir.parent.name, ep_dir.parent.name)
             try:
                 episode = loader.load_episode(ep_dir)
                 result = check_episode(
@@ -220,14 +211,12 @@ def scan_episodes(
                     tolerance2=tolerance2,
                     robot_params=robot_params,
                     enabled_parameters=config.enabled_parameters,
-                    label=label,
                 )
                 results.append(result)
                 _emit(result)
             except Exception as e:
                 err = {
                     "episode_path": str(ep_dir),
-                    "label": label,
                     "first_frame_score": 0.0,
                     "last_frame_score": 0.0,
                     "first_frame_passed": False,

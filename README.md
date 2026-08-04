@@ -24,13 +24,6 @@ Kuavo 额外依赖（bag 文件解析）：
 pip install rosbags
 ```
 
-开发验证：
-
-```bash
-pip install -e ".[dev]"
-pytest tests/ -v
-```
-
 ---
 
 ## 2. Quick Start
@@ -59,7 +52,7 @@ calibration:
 从 Episode 数据中自动统计 home_position 和 tolerance，写入 calibrated.yaml：
 
 ```bash
-python -m src.calibration --config configs/default.yaml
+python3 -m src.calibration
 ```
 
 ### Step 3: 运行检测
@@ -67,7 +60,7 @@ python -m src.calibration --config configs/default.yaml
 逐 Episode 检测复位状态，输出 JSON Contract：
 
 ```bash
-python main.py --config configs/default.yaml
+python3 main.py
 ```
 
 ### Step 4: 查看结果
@@ -79,7 +72,7 @@ python main.py --config configs/default.yaml
 Output -> /path/to/output/dataset_detection_output
 
 # 查看具体 Episode 结果
-cat /path/to/output/dataset_detection_output/episode_001_detection_output.json
+cat /path/to/output/{dataset}_detection_output/{episode}_detection_output.json
 ```
 
 ---
@@ -100,8 +93,8 @@ data:
 calibration:
   data_path: /path/to/episodes      # 校准数据路径
   exclude_episodes: []              # 排除的 Episode 名称列表
-  tolerance1_factor: 2.0            # 紧阈值 sigma 倍数（默认 3.0）
-  tolerance2_factor: 3.0            # 宽阈值 sigma 倍数（默认 6.0）
+  tolerance1_factor: 2.0            # 紧阈值 sigma 倍数（默认 2.0）
+  tolerance2_factor: 3.0            # 宽阈值 sigma 倍数（默认 3.0）
 ```
 
 | 字段 | 说明 | 默认值 |
@@ -111,8 +104,8 @@ calibration:
 | `data.raw_path` | 检测数据根目录 | — |
 | `calibration.data_path` | 校准数据根目录 | — |
 | `calibration.exclude_episodes` | 校准时排除的 Episode | `[]` |
-| `calibration.tolerance1_factor` | 紧阈值 sigma 倍数 | `3.0` |
-| `calibration.tolerance2_factor` | 宽阈值 sigma 倍数 | `6.0` |
+| `calibration.tolerance1_factor` | 紧阈值 sigma 倍数 | `2.0` |
+| `calibration.tolerance2_factor` | 宽阈值 sigma 倍数 | `3.0` |
 
 ### 3.2 calibrated.yaml
 
@@ -186,23 +179,23 @@ Episode 首帧数据
 
 ```bash
 # 使用默认配置
-python -m src.calibration
+python3 -m src.calibration
 
 # 指定配置和数据路径
-python -m src.calibration \
+python3 -m src.calibration \
   --config configs/default.yaml \
   --data-path /path/to/episodes
 
 # 指定容差因子
-python -m src.calibration \
+python3 -m src.calibration \
   --tolerance1-factor 2.0 \
-  --tolerance2-factor 4.0
+  --tolerance2-factor 3.0
 
 # 干运行（仅打印，不写入文件）
-python -m src.calibration --dry-run
+python3 -m src.calibration --dry-run
 
 # 覆盖机器人
-python -m src.calibration --robot kuavo
+python3 -m src.calibration --robot kuavo
 ```
 
 | 参数 | 说明 |
@@ -229,21 +222,16 @@ python -m src.calibration --robot kuavo
 
 ```bash
 # 使用默认配置
-python main.py
+python3 main.py
 
 # 指定数据路径和输出目录
-python main.py \
+python3 main.py \
   --data-path /path/to/episodes \
   --config configs/default.yaml \
   --output-dir /path/to/output
 
 # 覆盖机器人
-python main.py --robot quanta_x1
-
-# 标签映射
-python main.py \
-  --label episode_001 "Task A" \
-  --label episode_002 "Task B"
+python3 main.py --robot quanta_x1
 ```
 
 | 参数 | 说明 |
@@ -252,7 +240,6 @@ python main.py \
 | `--data-path, -d` | 覆盖检测数据路径 |
 | `--output-dir, -o` | 覆盖输出目录 |
 | `--robot, -r` | 覆盖机器人标识 |
-| `--label, -l` | 目录名 → 显示标签映射 |
 
 ---
 
@@ -295,7 +282,7 @@ score = 100 × (tolerance2 - error) / (tolerance2 - tolerance1)
 
 ### Reasons
 
-未满分的参数会生成自然语言原因描述：
+未满分的参数会生成原因描述：
 
 ```json
 [
@@ -313,8 +300,8 @@ score = 100 × (tolerance2 - error) / (tolerance2 - tolerance1)
 ```
 {output.dir}/
 └── {dataset}_detection_output/
-    ├── episode_001_detection_output.json
-    ├── episode_002_detection_output.json
+    ├── {episode}_detection_output.json
+    ├── {episode}_detection_output.json
     └── ...
 ```
 

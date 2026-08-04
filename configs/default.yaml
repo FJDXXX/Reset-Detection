@@ -1,16 +1,13 @@
-robot: kuavo
+robot: yuanli
 
 output:
   dir: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
 
 data:
-  raw_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
+  raw_path: /mnt/public/dht/fold_towel
 
 calibration:
-  data_path: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets
-  exclude_episodes: [
-    # episode_0002,
-    # episode_0005
-   ]
+  data_path: /mnt/public/dht/fold_towel
+  exclude_episodes: []
   tolerance1_factor: 2.0
-  tolerance2_factor: 3.0
+  tolerance2_factor: 4.0
