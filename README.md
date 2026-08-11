@@ -3,7 +3,7 @@
 检测机器人在 Episode 结束后是否准确回到 Home Position（复位位置/零位）。
 
 **输入**：机器人的 Episode 数据（关节/末端/底盘/灵巧手等）  
-**输出**：每个 Episode 一份 JSON，包含 Initialization 和 Reset 两个 Contract（score + passed + reasons）  
+**输出**：每个 Episode 一份 JSON，包含 Initialization 和 Reset 两个 Contract（score + passed + reasons + attribution）  
 **支持机器人**：yuanli、quanta_x1、kuavo
 
 ---
@@ -292,6 +292,52 @@ score = 100 × (tolerance2 - error) / (tolerance2 - tolerance1)
 ]
 ```
 
+### Attribution
+
+未满分的参数或维度会生成精确归因，用于定位具体扣分来源：
+
+```json
+[
+  {
+    "atom": "arm.left_arm_joint_positions[Joint 4]",
+    "score": 55.0,
+    "weighted_gap": 45.0
+  },
+  {
+    "atom": "base.base_orientation",
+    "score": 72.0,
+    "weighted_gap": 28.0
+  }
+]
+```
+
+**生成规则**：
+
+| 参数类型 | score = 100 | score < 100 |
+|---------|-------------|-------------|
+| scalar / quaternion | 不生成 | 生成 1 条 attribution |
+| vector（维度级） | 该维度不生成 | 该维度生成 1 条 attribution |
+
+**排序**：按 `weighted_gap` 降序排列（问题最严重的排最前）。
+
+**`weighted_gap` 计算**：
+
+```
+weighted_gap = 100 - score
+```
+
+未来引入 Parameter Weight 后升级为 `weighted_gap = (100 - score) × weight`。
+
+**维度标签**：
+
+| 参数类型 | 标签格式 | 示例 |
+|---------|---------|------|
+| `joint_positions` / `joint_pos` / `joint_torques` | `[Joint N]`（1-based） | `[Joint 4]` |
+| `ee_position` / `position` / `gravity_vector` / `angular_velocity` / `car_pose_position` | `[X]` `[Y]` `[Z]` | `[X]` |
+| `rotation` / `car_pose_rotation` | `[R]` `[P]` `[Y]` | `[P]` |
+| `left_dexhand_positions` / `right_dexhand_positions` | `[Finger N]` | `[Finger 3]` |
+| `gripper_joint_positions` | `[1]` `[2]` | `[1]` |
+
 ---
 
 ## 7. Output
@@ -324,7 +370,13 @@ score = 100 × (tolerance2 - error) / (tolerance2 - tolerance1)
     "reasons": [
       "左臂末端位置未完全回到初始状态（72分）"
     ],
-    "attribution": [],
+    "attribution": [
+      {
+        "atom": "left_arm.ee_position[Y]",
+        "score": 72.0,
+        "weighted_gap": 28.0
+      }
+    ],
     "sub_indicators": [],
     "threshold_profile": {}
   },
@@ -351,6 +403,7 @@ score = 100 × (tolerance2 - error) / (tolerance2 - tolerance1)
 | `score` | Assessment Score（0-100） |
 | `passed` | 是否通过（score > 0） |
 | `reasons` | 未满分参数的自然语言原因列表 |
+| `attribution` | 未满分参数/维度的精确归因列表（atom + score + weighted_gap） |
 
 ---
 

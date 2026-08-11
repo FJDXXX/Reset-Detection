@@ -1,4 +1,4 @@
-robot: yuanli
+robot: quanta_x1
 
 output:
   dir: /mnt/public/dht/effort_datasets/too_short_too_long_normal_datasets

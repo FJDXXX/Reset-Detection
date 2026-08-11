@@ -8,6 +8,7 @@ from .parameters import (
     RobotParameters,
     compute_error,
     compute_parameter_score,
+    compute_vector_dim_scores,
 )
 from .loader import Episode
 
@@ -72,6 +73,8 @@ def compute_episode_metrics(
         if tol1 is not None and tol2 is not None:
             entry["tolerance1"] = tol1
             entry["tolerance2"] = tol2
+            if param.param_type == "vector":
+                entry["dim_scores"] = compute_vector_dim_scores(err, tol1, tol2)
         param_results.append(entry)
 
         start_val = start[param.key]
@@ -91,6 +94,8 @@ def compute_episode_metrics(
         if tol1 is not None and tol2 is not None:
             first_entry["tolerance1"] = tol1
             first_entry["tolerance2"] = tol2
+            if param.param_type == "vector":
+                first_entry["dim_scores"] = compute_vector_dim_scores(first_err, tol1, tol2)
         first_frame_results.append(first_entry)
 
     result["parameters"] = param_results

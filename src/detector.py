@@ -9,6 +9,7 @@ from .exporter import export_episode_result
 from .loaders.loader_factory import LoaderFactory
 from .loader import Episode
 from .metrics import compute_episode_metrics
+from .parameters import get_dim_labels
 
 
 def _build_reasons(
@@ -37,6 +38,39 @@ def _compute_assessment_score(
     if any(s == 0.0 for s in scores):
         return 0.0, False
     return float(sum(scores) / len(scores)), True
+
+
+def _build_attribution(
+    param_results: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    attributions: list[dict[str, Any]] = []
+    for pr in param_results:
+        score = pr.get("score", 100)
+        if score >= 100:
+            continue
+        path = pr.get("path", "")
+        key = pr.get("key", "")
+        param_type = pr.get("type", "")
+
+        if param_type == "vector" and "dim_scores" in pr:
+            dim_scores = pr["dim_scores"]
+            labels = get_dim_labels(key, len(dim_scores))
+            for i, ds in enumerate(dim_scores):
+                if ds < 100:
+                    attributions.append({
+                        "atom": f"{path}{labels[i]}",
+                        "score": ds,
+                        "weighted_gap": 100 - ds,
+                    })
+        else:
+            attributions.append({
+                "atom": path,
+                "score": score,
+                "weighted_gap": 100 - score,
+            })
+
+    attributions.sort(key=lambda x: x["weighted_gap"], reverse=True)
+    return attributions
 
 
 def check_episode(
@@ -101,6 +135,19 @@ def check_episode(
             gm.get("parameters", []), path_message_map
         ))
 
+    first_attribution: list[dict[str, Any]] = []
+    last_attribution: list[dict[str, Any]] = []
+    for gm in group_results:
+        first_attribution.extend(_build_attribution(
+            gm.get("first_frame_parameters", [])
+        ))
+        last_attribution.extend(_build_attribution(
+            gm.get("parameters", [])
+        ))
+
+    first_attribution.sort(key=lambda x: x["weighted_gap"], reverse=True)
+    last_attribution.sort(key=lambda x: x["weighted_gap"], reverse=True)
+
     return {
         "episode_path": str(episode.path),
         "first_frame_score": first_score,
@@ -109,6 +156,8 @@ def check_episode(
         "last_frame_passed": last_passed,
         "first_frame_reasons": first_reasons,
         "last_frame_reasons": last_reasons,
+        "first_frame_attribution": first_attribution,
+        "last_frame_attribution": last_attribution,
         "group_metrics": group_results,
     }
 

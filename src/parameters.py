@@ -132,11 +132,11 @@ def _scalar_score(error: float, tolerance1: float, tolerance2: float) -> float:
     return 100.0 * (tolerance2 - error) / (tolerance2 - tolerance1)
 
 
-def _vector_score(
+def compute_vector_dim_scores(
     error: dict[str, Any],
     tolerance1: list[float] | float,
     tolerance2: list[float] | float,
-) -> float:
+) -> list[float]:
     dims = error["dimensions"]
     n = len(dims)
     if isinstance(tolerance1, (int, float)):
@@ -156,7 +156,15 @@ def _vector_score(
             per_dim.append(0.0)
         else:
             per_dim.append(100.0 * (t2[i] - dims[i]) / (t2[i] - t1[i]))
+    return per_dim
 
+
+def _vector_score(
+    error: dict[str, Any],
+    tolerance1: list[float] | float,
+    tolerance2: list[float] | float,
+) -> float:
+    per_dim = compute_vector_dim_scores(error, tolerance1, tolerance2)
     if any(s == 0.0 for s in per_dim):
         return 0.0
     return float(np.mean(per_dim))
@@ -251,3 +259,26 @@ def compute_tolerance(
     if param_type == "quaternion":
         return float(sigma_factor * stats["std"])
     raise ValueError(f"Unknown parameter type: {param_type}")
+
+
+# ── Dimension labels ──────────────────────────────────────────
+
+_JOINT_KEYS = {"joint_positions", "joint_pos", "joint_torques"}
+_XYZ_KEYS = {"ee_position", "position", "gravity_vector", "angular_velocity",
+             "car_pose_position"}
+_RPY_KEYS = {"rotation", "car_pose_rotation"}
+_FINGER_KEYS = {"left_dexhand_positions", "right_dexhand_positions"}
+
+
+def get_dim_labels(key: str, n: int) -> list[str]:
+    if key in _JOINT_KEYS:
+        return [f"[Joint {i + 1}]" for i in range(n)]
+    if key in _XYZ_KEYS:
+        base = ["[X]", "[Y]", "[Z]"]
+        return base[:n] + [f"[Dim {i + 1}]" for i in range(3, n)]
+    if key in _RPY_KEYS:
+        base = ["[R]", "[P]", "[Y]"]
+        return base[:n] + [f"[Dim {i + 1}]" for i in range(3, n)]
+    if key in _FINGER_KEYS:
+        return [f"[Finger {i + 1}]" for i in range(n)]
+    return [f"[{i + 1}]" for i in range(n)]

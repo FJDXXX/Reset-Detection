@@ -47,15 +47,18 @@ def _build_contract(
     score_key = f"{key}_score"
     passed_key = f"{key}_passed"
     reasons_key = f"{key}_reasons"
+    attribution_key = f"{key}_attribution"
     
     score = result.get(score_key, 0.0)
     passed = result.get(passed_key, False)
     reasons = result.get(reasons_key, [])
+    attribution = result.get(attribution_key, [])
     
     if result.get("status") == "load_error":
         score = 0.0
         passed = False
         reasons = ["Episode数据加载失败"]
+        attribution = []
 
     return {
         "module": "reset_detection",
@@ -65,7 +68,7 @@ def _build_contract(
         "passed": passed,
         "verdict": None,
         "reasons": reasons,
-        "attribution": [],
+        "attribution": attribution,
         "sub_indicators": [],
         "threshold_profile": {},
     }
